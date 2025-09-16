@@ -14,9 +14,9 @@ services:
     environment:
       - NODE_ENV=production
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-    volumes:
-      # Uncomment if you want to persist data
-      # - ./data:/app/data
+    # volumes:
+    #   Uncomment if you want to persist data
+    #   - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/charity/stats"]
