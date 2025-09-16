@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { validateURL } from "@/lib/url-validator";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import GoogleAd from "@/components/google-ad";
 import type { Download } from "@shared/schema";
 import type { DownloadRequest } from "@/types/download";
 
@@ -15,6 +16,8 @@ export default function DownloadInterface() {
   const [urls, setUrls] = useState(['', '', '']);
   const [selectedQuality, setSelectedQuality] = useState<'free' | 'premium'>('free');
   const [activeDownloads, setActiveDownloads] = useState<string[]>([]);
+  const [showAd, setShowAd] = useState(false);
+  const [pendingDownloads, setPendingDownloads] = useState<DownloadRequest[]>([]);
   const { toast } = useToast();
 
   const createDownloadMutation = useMutation({
@@ -69,19 +72,42 @@ export default function DownloadInterface() {
       return;
     }
 
-    // Create downloads
+    // Prepare download requests
+    const downloadRequests: DownloadRequest[] = [];
     for (let i = 0; i < validUrls.length; i++) {
       const url = validUrls[i];
       const validation = validations[i];
       
       if (validation.isValid && validation.platform) {
-        createDownloadMutation.mutate({
+        downloadRequests.push({
           url,
           platform: validation.platform,
           quality: selectedQuality,
         });
       }
     }
+
+    // Store pending downloads and show ad
+    setPendingDownloads(downloadRequests);
+    setShowAd(true);
+  };
+
+  const handleAdComplete = () => {
+    setShowAd(false);
+    // Process all pending downloads after ad completion
+    pendingDownloads.forEach(downloadData => {
+      createDownloadMutation.mutate(downloadData);
+    });
+    setPendingDownloads([]);
+  };
+
+  const handleAdCancel = () => {
+    setShowAd(false);
+    setPendingDownloads([]);
+    toast({
+      title: "Downloads Cancelled",
+      description: "Your download requests were cancelled.",
+    });
   };
 
   return (
@@ -154,8 +180,8 @@ export default function DownloadInterface() {
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li>• Video: 480p MP4</li>
                     <li>• Audio: 128kbps MP3</li>
-                    <li>• No ads required</li>
-                    <li>• Instant download</li>
+                    <li>• Watch 15s Google ad</li>
+                    <li>• Helps keep service free</li>
                   </ul>
                 </div>
                 
@@ -189,7 +215,7 @@ export default function DownloadInterface() {
             <Button 
               className="w-full py-4 text-lg"
               onClick={handleDownload}
-              disabled={createDownloadMutation.isPending || urls.every(url => url.trim() === '')}
+              disabled={createDownloadMutation.isPending || urls.every(url => url.trim() === '') || showAd}
               data-testid="button-start-download"
             >
               <i className="fas fa-download mr-2"></i>
@@ -203,6 +229,16 @@ export default function DownloadInterface() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Google Ad Modal */}
+      {showAd && (
+        <GoogleAd 
+          duration={selectedQuality === 'free' ? 15 : 30}
+          onAdComplete={handleAdComplete}
+          onCancel={handleAdCancel}
+          quality={selectedQuality}
+        />
+      )}
     </section>
   );
 }
