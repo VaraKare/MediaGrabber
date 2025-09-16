@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
 export default function Header() {
@@ -9,7 +10,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-3" data-testid="logo">
+          <Link href="/" className="flex items-center space-x-3" data-testid="logo">
             <div className="gradient-bg p-2 rounded-lg">
               <i className="fas fa-download text-primary-foreground text-xl"></i>
             </div>
@@ -17,7 +18,7 @@ export default function Header() {
               <h1 className="text-xl font-bold text-foreground">MediaHub</h1>
               <p className="text-xs text-muted-foreground">Download. Share. Impact.</p>
             </div>
-          </div>
+          </Link>
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
@@ -27,6 +28,9 @@ export default function Header() {
             <a href="#charity" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-charity">
               Charity
             </a>
+            <Link href="/donate" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-donate">
+              Donate
+            </Link>
             <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-about">
               About
             </a>
@@ -55,6 +59,9 @@ export default function Header() {
               <a href="#charity" className="text-muted-foreground hover:text-foreground transition-colors">
                 Charity
               </a>
+              <Link href="/donate" className="text-muted-foreground hover:text-foreground transition-colors">
+                Donate
+              </Link>
               <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">
                 About
               </a>

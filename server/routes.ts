@@ -1,11 +1,63 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import Stripe from "stripe";
 import { storage } from "./storage";
 import { insertDownloadSchema } from "@shared/schema";
 import { z } from "zod";
 
+// Initialize Stripe - using the blueprint integration
+let stripe: Stripe | null = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-08-27.basil",
+  });
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Stripe payment route for donations - using blueprint integration
+  app.post("/api/create-payment-intent", async (req, res) => {
+    if (!stripe) {
+      return res.status(503).json({ 
+        error: "Donations temporarily unavailable",
+        message: "Payment processing is not configured. Please try again later." 
+      });
+    }
+
+    try {
+      // Validate request data
+      const donationSchema = z.object({
+        amount: z.number().positive().min(0.5).max(10000),
+        description: z.string().max(200).optional()
+      });
+      
+      const { amount, description } = donationSchema.parse(req.body);
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: "usd",
+        description: description || "Charitable donation via MediaHub",
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          source: 'mediahub_donation'
+        }
+      });
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          error: "Invalid donation amount", 
+          details: error.errors 
+        });
+      } else {
+        console.error("Error creating payment intent:", error);
+        res
+          .status(500)
+          .json({ message: "Error creating payment intent: " + error.message });
+      }
+    }
+  });
+
   // Get charity stats
   app.get("/api/charity/stats", async (req, res) => {
     try {
