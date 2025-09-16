@@ -6,7 +6,7 @@ import { z } from "zod";
 export const downloads = pgTable("downloads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   url: text("url").notNull(),
-  platform: text("platform").notNull(), // youtube, instagram, twitter
+  platform: text("platform").notNull(), // youtube, instagram, twitter, tiktok
   title: text("title"),
   quality: text("quality").notNull(), // free, premium
   status: text("status").notNull().default("pending"), // pending, processing, completed, failed

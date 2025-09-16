@@ -126,7 +126,7 @@ export default function DownloadInterface() {
                 <div key={index} className="relative">
                   <Label className="block text-sm font-medium text-foreground mb-2">
                     URL #{index + 1} {index === 0 ? 
-                      <span className="text-muted-foreground">(YouTube, Instagram, Twitter)</span> : 
+                      <span className="text-muted-foreground">(YouTube, Instagram, Twitter, TikTok)</span> : 
                       <span className="text-muted-foreground">(Optional)</span>
                     }
                   </Label>
@@ -136,7 +136,7 @@ export default function DownloadInterface() {
                       placeholder={
                         index === 0 ? "https://youtube.com/watch?v=..." :
                         index === 1 ? "https://instagram.com/p/..." :
-                        "https://twitter.com/user/status/..."
+                        "https://tiktok.com/@user/video/..."
                       }
                       value={urls[index]}
                       onChange={(e) => handleUrlChange(index, e.target.value)}
@@ -147,6 +147,8 @@ export default function DownloadInterface() {
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                         {validateURL(urls[index]).isValid ? (
                           <i className="fas fa-check-circle text-secondary" data-testid={`icon-valid-${index + 1}`}></i>
+                        ) : validateURL(urls[index]).comingSoon ? (
+                          <i className="fas fa-rocket text-orange-500" data-testid={`icon-coming-soon-${index + 1}`} title="Coming soon!"></i>
                         ) : (
                           <i className="fas fa-exclamation-circle text-destructive" data-testid={`icon-invalid-${index + 1}`}></i>
                         )}

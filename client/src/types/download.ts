@@ -1,6 +1,6 @@
 export interface DownloadRequest {
   url: string;
-  platform: 'youtube' | 'instagram' | 'twitter';
+  platform: 'youtube' | 'instagram' | 'twitter' | 'tiktok';
   quality: 'free' | 'premium';
 }
 

@@ -1,8 +1,10 @@
-export type Platform = 'youtube' | 'instagram' | 'twitter';
+export type Platform = 'youtube' | 'instagram' | 'twitter' | 'tiktok';
+export type ComingSoonPlatform = 'facebook' | 'linkedin' | 'snapchat' | 'reddit' | 'twitch';
 
 export interface URLValidationResult {
   isValid: boolean;
   platform?: Platform;
+  comingSoon?: ComingSoonPlatform;
   error?: string;
 }
 
@@ -45,5 +47,31 @@ export function validateURL(url: string): URLValidationResult {
     return { isValid: false, error: 'Invalid Twitter URL' };
   }
 
-  return { isValid: false, error: 'Unsupported platform. Please use YouTube, Instagram, or Twitter URLs.' };
+  // TikTok validation
+  if (url.includes('tiktok.com')) {
+    const tiktokRegex = /tiktok\.com\/@[^/]+\/video\/\d+|vm\.tiktok\.com\/[a-zA-Z0-9]+/;
+    if (tiktokRegex.test(url)) {
+      return { isValid: true, platform: 'tiktok' };
+    }
+    return { isValid: false, error: 'Invalid TikTok URL' };
+  }
+
+  // Coming Soon platforms
+  if (url.includes('facebook.com') || url.includes('fb.com')) {
+    return { isValid: false, comingSoon: 'facebook', error: 'Facebook support coming soon! 🚀' };
+  }
+  if (url.includes('linkedin.com')) {
+    return { isValid: false, comingSoon: 'linkedin', error: 'LinkedIn support coming soon! 🚀' };
+  }
+  if (url.includes('snapchat.com')) {
+    return { isValid: false, comingSoon: 'snapchat', error: 'Snapchat support coming soon! 🚀' };
+  }
+  if (url.includes('reddit.com')) {
+    return { isValid: false, comingSoon: 'reddit', error: 'Reddit support coming soon! 🚀' };
+  }
+  if (url.includes('twitch.tv')) {
+    return { isValid: false, comingSoon: 'twitch', error: 'Twitch support coming soon! 🚀' };
+  }
+
+  return { isValid: false, error: 'Unsupported platform. Please use YouTube, Instagram, Twitter, or TikTok URLs.' };
 }
