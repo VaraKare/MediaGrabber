@@ -158,6 +158,40 @@ npx @railway/cli deploy
 - Use Netlify Functions for API endpoints
 - Limited backend capabilities
 
+### Option 5: Docker (Self-Hosted)
+**Best for**: Custom deployments and container orchestration
+
+1. **Clone & Configure**:
+```bash
+git clone <your-repo-url>
+cd mediahub
+cp .env.example .env
+# Edit .env with your Stripe keys (both STRIPE_SECRET_KEY and VITE_STRIPE_PUBLIC_KEY)
+```
+
+2. **Deploy with Docker Compose**:
+```bash
+docker-compose up --build -d
+```
+
+3. **Or build manually**:
+```bash
+# Build with environment variables
+docker build -t mediahub \
+  --build-arg VITE_STRIPE_PUBLIC_KEY=pk_test_your_key \
+  --build-arg VITE_API_BASE_URL= \
+  .
+
+# Run with environment variables
+docker run -d -p 5000:5000 \
+  -e STRIPE_SECRET_KEY=sk_test_your_key \
+  -e NODE_ENV=production \
+  mediahub
+```
+
+**Benefits**: Full control, scalable, production-ready containerization
+**Requirements**: Server with Docker, proper environment configuration
+
 ## 📁 Project Structure
 
 ```
