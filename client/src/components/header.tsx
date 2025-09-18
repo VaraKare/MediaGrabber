@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -34,9 +33,6 @@ export default function Header() {
             <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-about">
               About
             </a>
-            <Button className="bg-primary text-primary-foreground hover:opacity-90" data-testid="button-premium">
-              Go Premium
-            </Button>
           </nav>
           
           {/* Mobile menu button */}
@@ -65,9 +61,6 @@ export default function Header() {
               <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">
                 About
               </a>
-              <Button className="bg-primary text-primary-foreground hover:opacity-90 self-start">
-                Go Premium
-              </Button>
             </nav>
           </div>
         )}

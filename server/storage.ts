@@ -38,7 +38,7 @@ export class MemStorage implements IStorage {
         month,
         year,
         totalRaised: 8247, // Current demo values
-        premiumDownloads: 12450,
+        downloads: 12450, // Updated from premiumDownloads
         beneficiaries: 156,
         updatedAt: new Date(),
       };
@@ -97,9 +97,9 @@ export class MemStorage implements IStorage {
       id: existing?.id || randomUUID(),
       month,
       year,
-      totalRaised: updates.totalRaised || existing?.totalRaised || 0,
-      premiumDownloads: updates.premiumDownloads || existing?.premiumDownloads || 0,
-      beneficiaries: updates.beneficiaries || existing?.beneficiaries || 0,
+      totalRaised: updates.totalRaised ?? existing?.totalRaised ?? 0,
+      downloads: updates.downloads ?? existing?.downloads ?? 0, // Updated from premiumDownloads
+      beneficiaries: updates.beneficiaries ?? existing?.beneficiaries ?? 0,
       updatedAt: new Date(),
     };
     
