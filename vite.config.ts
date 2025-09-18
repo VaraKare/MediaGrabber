@@ -21,6 +21,9 @@ export default defineConfig(async () => {
         "@assets": path.resolve(import.meta.dirname, "attached_assets"),
       },
     },
+    define: {
+      'process.env': process.env
+    },
     root: path.resolve(import.meta.dirname, "client"),
     build: {
       outDir: path.resolve(import.meta.dirname, "dist/public"),
@@ -31,6 +34,6 @@ export default defineConfig(async () => {
         strict: true,
         deny: ["**/.*"],
       },
-    },
+    }
   };
 });
