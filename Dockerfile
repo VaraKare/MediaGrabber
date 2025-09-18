@@ -1,5 +1,5 @@
 # Multi-stage build for production efficiency
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -25,7 +25,7 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS runtime
+FROM node:22-alpine AS runtime
 
 # Install curl for healthcheck
 RUN apk add --no-cache curl
