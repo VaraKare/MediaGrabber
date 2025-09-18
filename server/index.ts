@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { serveStatic, log } from "./vite";
 
 const app = express();
 
@@ -58,24 +58,20 @@ app.use((req, res, next) => {
 
   const isApiOnly = process.env.API_ONLY_MODE === 'true';
 
-  // In API-only mode (for Render), we don't serve the frontend.
   if (isApiOnly) {
       log("Running in API-only mode. Frontend will not be served.");
-      // Add a root endpoint to confirm the API is up
       app.get("/", (_req, res) => {
           res.json({ message: "MediaHub API is running" });
       });
   } else {
-    // In a normal deployment, we check the environment.
     if (app.get("env") === "development") {
+      const { setupVite } = await import("./vite");
       await setupVite(app, server);
     } else {
       serveStatic(app);
     }
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
     port,
