@@ -9,7 +9,7 @@
     "start": "NODE_ENV=production node dist/prod.js",
     "check": "npx tsc",
     "db:push": "npx -r dotenv/config drizzle-kit push",
-    "vercel-build": "npm run db:push && npm run build"
+    "vercel-build": "npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
