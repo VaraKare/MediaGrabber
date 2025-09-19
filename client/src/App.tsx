@@ -1,31 +1,22 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import Home from "@/pages/home";
-import Donate from "@/pages/donate";
-import NotFound from "@/pages/not-found";
+import { Route, Switch } from "wouter";
+import HomePage from "@/pages/home";
+import Donation from "@/pages/donation";
+import Header from "@/components/header";
+import Footer from "@/components/footer";
 
-function Router() {
+export default function App() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/donate" component={Donate} />
-      <Route component={NotFound} />
-    </Switch>
+    <div className="min-h-screen bg-background text-foreground">
+      <Header />
+      <main>
+        <Switch>
+          <Route path="/" component={HomePage} />
+          <Route path="/donate" component={Donation} />
+        </Switch>
+      </main>
+      <Footer />
+      <Toaster />
+    </div>
   );
 }
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
-
-export default App;
