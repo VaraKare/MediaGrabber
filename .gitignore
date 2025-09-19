@@ -1,6 +1,6 @@
 # IDE and local development files
 .idx/
-.local/
+.local
 
 # Assets folder - often contains large files not suitable for git
 attached_assets/
@@ -58,3 +58,8 @@ attached_assets
 
 replit.md 
 .replit/
+gemini.md
+project_status.txt
+
+.local
+attached_assets
