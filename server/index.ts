@@ -6,13 +6,21 @@ import { serveStatic, log } from "./utils";
 
 const app = express();
 
-const allowedOrigins = [
-    /^https:\/\/.*-passitpal\.vercel\.app$/,
-    'https://downloadmedia-umber.vercel.app',
-    'https://mediagrabber-elbv.onrender.com'
-];
-
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors({
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+            /^https:\/\/.*-passitpal\.vercel\.app$/,
+            'https://downloadmedia-umber.vercel.app',
+            'https://mediagrabber-elbv.onrender.com'
+        ];
+        if (!origin || allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
 log(`CORS enabled for specific origins.`);
 
 app.use(express.json());
