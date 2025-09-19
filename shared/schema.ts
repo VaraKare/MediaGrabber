@@ -8,7 +8,9 @@ export const downloads = pgTable("downloads", {
   url: text("url").notNull(),
   platform: text("platform").notNull(),
   title: text("title"),
-  quality: text("quality", { enum: ["normal", "high"] }).notNull(),
+  quality: text("quality", { enum: ["free", "premium"] }).notNull(),
+  format: text("format", { enum: ["mp3", "mp4"] }).notNull(),
+  resolution: text("resolution"),
   status: text("status").notNull().default("pending"),
   progress: integer("progress").default(0),
   downloadUrl: text("download_url"),
@@ -24,25 +26,29 @@ export const charityStats = pgTable("charity_stats", {
   month: text("month").notNull(),
   year: integer("year").notNull(),
   totalRaised: integer("total_raised").default(0),
-  highQualityDownloads: integer("high_quality_downloads").default(0),
+  premiumDownloads: integer("premium_downloads").default(0),
   beneficiaries: integer("beneficiaries").default(0),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Zod schemas for validation
 export const insertDownloadSchema = createInsertSchema(downloads, {
-  quality: z.enum(["normal", "high"])
+  quality: z.enum(["free", "premium"]),
+  format: z.enum(["mp3", "mp4"]),
+  resolution: z.string().optional(),
 }).pick({
   url: true,
   platform: true,
   quality: true,
+  format: true,
+  resolution: true,
 });
 
 export const insertCharityStatsSchema = createInsertSchema(charityStats).pick({
   month: true,
   year: true,
   totalRaised: true,
-  highQualityDownloads: true,
+  premiumDownloads: true,
   beneficiaries: true,
 });
 

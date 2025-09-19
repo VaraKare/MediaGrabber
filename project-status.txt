@@ -1,0 +1,39 @@
+Backend (API)
+- Added: format (mp3/mp4) and resolution fields; quality is now free/premium
+- Endpoints:
+  - GET /api/formats?url=... → returns available formats (YouTube only, mocked)
+  - POST /api/downloads validates url/platform/format/resolution; simulates ad wait and completes
+- TODO (next):
+  1) Integrate yt-dlp + ffmpeg in Render container; probe formats and download
+  2) Persist files to S3 (or local disk) and serve via /api/downloads/:id/file
+  3) Rate limiting + basic abuse protection
+  4) Expand platforms: Instagram, Twitter (return coming soon until implemented)
+
+Frontend (SPA)
+- Added UI to select format (MP3/MP4) and resolution (MP4 only)
+- Ad logic: ≤480p → 15s, >480p → 30s; premium tier also shows 30s
+- Uses default queryFn for React Query
+- TODO (next):
+  1) Fetch /api/formats to dynamically populate resolution list per URL
+  2) Show platform-specific “coming soon” UX inline
+  3) Add error boundary and toast details on failures
+  4) Improve progress view (ETA, speed) after yt-dlp integration
+
+DevOps
+- Vercel: SPA only (dist/public)
+- Render: API with CORS for Vercel + localhost
+- TODO (next):
+  1) Add ENV on Render for yt-dlp/ffmpeg paths and S3 credentials
+  2) Point VITE_API_BASE_URL to Render API
+  3) Add custom domains and HTTPS if needed
+
+Charity
+- Premium completes increment premiumDownloads and adds +₹2 equivalent to totalRaised (mock)
+- TODO (next): wire real currency and donation accounting
+
+Cutover Plan
+1) Implement yt-dlp probing + download on API
+2) Wire dynamic formats UI using /api/formats
+3) Store files to S3; update file endpoint
+4) Launch Instagram/Twitter as coming soon
+5) QA + rate limit + ship

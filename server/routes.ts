@@ -61,9 +61,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Return available format/resolution options (YouTube only for now)
+  app.get("/api/formats", async (req, res) => {
+    try {
+      const url = z.string().url().parse(req.query.url);
+      const isYoutube = /youtube\.com|youtu\.be/.test(url);
+      if (!isYoutube) {
+        return res.status(400).json({ error: "Coming soon for this platform" });
+      }
+      // Mocked options for now; replace with yt-dlp probing later
+      res.json({
+        formats: [
+          { format: "mp4", resolutions: ["144p","240p","360p","480p","720p","1080p","1440p","2160p"] },
+          { format: "mp3", bitrates: ["128kbps","192kbps","320kbps"] }
+        ]
+      });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid url" });
+    }
+  });
+
   app.post("/api/downloads", async (req, res) => {
     try {
       const validatedData = insertDownloadSchema.parse(req.body);
+      // Enforce platform and resolution rules for now
+      const isYoutube = validatedData.platform === 'youtube';
+      if (!isYoutube) {
+        return res.status(400).json({ error: "Coming soon for this platform" });
+      }
+      if (validatedData.format === 'mp3') {
+        // resolution not needed
+      } else {
+        const allowed = ["144p","240p","360p","480p","720p","1080p","1440p","2160p"];
+        if (!validatedData.resolution || !allowed.includes(validatedData.resolution)) {
+          return res.status(400).json({ error: "Invalid or missing resolution" });
+        }
+      }
       const download = await storage.createDownload(validatedData);
       processDownload(download.id, validatedData.quality);
       res.json(download);
@@ -103,9 +136,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const download = await storage.getDownload(req.params.id);
       if (!download || download.status !== "completed") return res.status(404).send();
-      const sampleContent = Buffer.from("Sample MP4 file content");
-      res.setHeader('Content-Type', 'video/mp4');
-      res.setHeader('Content-Disposition', `attachment; filename="${download.title || 'download'}.mp4"`);
+      const isMp3 = (download as any).format === 'mp3';
+      const sampleContent = Buffer.from(isMp3 ? "Sample MP3 file content" : "Sample MP4 file content");
+      res.setHeader('Content-Type', isMp3 ? 'audio/mpeg' : 'video/mp4');
+      res.setHeader('Content-Disposition', `attachment; filename="${download.title || 'download'}.${isMp3 ? 'mp3' : 'mp4'}"`);
       res.send(sampleContent);
     } catch (error) {
       console.error("Error serving file:", error);
@@ -118,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 async function processDownload(downloadId: string, quality: InsertDownload['quality']) {
   try {
-    const adWaitTime = quality === 'high' ? 30000 : 15000;
+    const adWaitTime = quality === 'premium' ? 30000 : 15000;
     await new Promise(resolve => setTimeout(resolve, adWaitTime));
 
     await storage.updateDownload(downloadId, { status: "processing", progress: 10 });
@@ -139,8 +173,8 @@ async function processDownload(downloadId: string, quality: InsertDownload['qual
     const currentStats = await storage.getCharityStats(month, year);
     if (currentStats) {
       await storage.updateCharityStats(month, year, {
-        totalRaised: (currentStats.totalRaised || 0) + (quality === 'high' ? 2 : 1),
-        highQualityDownloads: (currentStats.highQualityDownloads || 0) + 1,
+        totalRaised: (currentStats.totalRaised || 0) + (quality === 'premium' ? 2 : 1),
+        premiumDownloads: (currentStats as any).premiumDownloads + (quality === 'premium' ? 1 : 0),
       });
     }
 

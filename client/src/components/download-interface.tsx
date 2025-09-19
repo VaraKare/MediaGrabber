@@ -15,7 +15,11 @@ import type { DownloadRequest } from "@/types/download";
 
 export default function DownloadInterface() {
   const [urls, setUrls] = useState(['', '', '']);
-  const [selectedQuality, setSelectedQuality] = useState<'normal' | 'high'>('normal');
+  const [selectedQuality, setSelectedQuality] = useState<'free' | 'premium'>('free');
+  const [format, setFormat] = useState<'mp3' | 'mp4'>('mp4');
+  const [resolution, setResolution] = useState<
+    '144p' | '240p' | '360p' | '480p' | '720p' | '1080p' | '1440p' | '2160p'
+  >('480p');
   const [activeDownloads, setActiveDownloads] = useState<string[]>([]);
   const [showAd, setShowAd] = useState(false);
   const [pendingDownloads, setPendingDownloads] = useState<DownloadRequest[]>([]);
@@ -78,10 +82,19 @@ export default function DownloadInterface() {
       const validation = validations[i];
       
       if (validation.isValid && validation.platform) {
+        if (validation.platform !== 'youtube') {
+          toast({
+            title: 'Coming soon',
+            description: `${validation.platform} downloads are coming soon. Please use a YouTube URL for now.`,
+          });
+          continue;
+        }
         downloadRequests.push({
           url,
           platform: validation.platform,
           quality: selectedQuality,
+          format,
+          resolution: format === 'mp4' ? resolution : undefined,
         });
       }
     }
@@ -106,6 +119,9 @@ export default function DownloadInterface() {
       description: "Your download requests were cancelled.",
     });
   };
+
+  const highResSet = new Set(['720p','1080p','1440p','2160p']);
+  const adSeconds = format === 'mp4' && highResSet.has(resolution) ? 30 : 15;
 
   return (
     <section className="py-12 bg-muted/30" data-testid="download-interface">
@@ -155,49 +171,37 @@ export default function DownloadInterface() {
               ))}
             </div>
 
-            <div>
-              <h4 className="text-lg font-medium text-foreground mb-4">Choose Quality</h4>
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* Normal Quality Option */}
-                <div 
-                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                    selectedQuality === 'normal' 
-                      ? 'border-ring bg-accent/5' 
-                      : 'border-border hover:border-ring'
-                  }`}
-                  onClick={() => setSelectedQuality('normal')}
-                  data-testid="option-quality-normal"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-medium text-foreground">Normal Quality</h5>
+            <div className="space-y-4">
+              <h4 className="text-lg font-medium text-foreground">Choose Format & Resolution</h4>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Format</Label>
+                  <div className="flex gap-2">
+                    <Button variant={format === 'mp4' ? 'default' : 'outline'} onClick={() => setFormat('mp4')}>MP4</Button>
+                    <Button variant={format === 'mp3' ? 'default' : 'outline'} onClick={() => setFormat('mp3')}>MP3</Button>
                   </div>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Video: 480p MP4</li>
-                    <li>• Audio: 128kbps MP3</li>
-                    <li>• Watch 15s ad</li>
-                    <li>• Helps keep service free</li>
-                  </ul>
                 </div>
-                
-                {/* High Quality Option */}
-                <div 
-                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                    selectedQuality === 'high' 
-                      ? 'border-accent bg-accent/5 border-2' 
-                      : 'border-accent hover:border-accent/80 bg-accent/5'
-                  }`}
-                  onClick={() => setSelectedQuality('high')}
-                  data-testid="option-quality-high"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-medium text-foreground">High Quality</h5>
+                {format === 'mp4' && (
+                  <div className="space-y-2">
+                    <Label className="text-sm">Resolution</Label>
+                    <select
+                      className="w-full border rounded px-3 py-2 bg-background"
+                      value={resolution}
+                      onChange={(e) => setResolution(e.target.value as typeof resolution)}
+                    >
+                      {['144p','240p','360p','480p','720p','1080p','1440p','2160p'].map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
                   </div>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Video: 720p, 1080p MP4</li>
-                    <li>• Audio: 320kbps MP3</li>
-                    <li>• Watch 30s ad</li>
-                    <li>• 50% of ad revenue supports charity</li>
-                  </ul>
+                )}
+                <div className="space-y-2">
+                  <Label className="text-sm">Tier</Label>
+                  <div className="flex gap-2">
+                    <Button variant={selectedQuality === 'free' ? 'default' : 'outline'} onClick={() => setSelectedQuality('free')}>Free</Button>
+                    <Button variant={selectedQuality === 'premium' ? 'default' : 'outline'} onClick={() => setSelectedQuality('premium')}>Premium</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Ads: {adSeconds}s {format === 'mp4' && highResSet.has(resolution) ? '(high resolution)' : '(standard)'}</p>
                 </div>
               </div>
             </div>
@@ -221,7 +225,7 @@ export default function DownloadInterface() {
       
       {showAd && (
         <GoogleAd 
-          duration={selectedQuality === 'normal' ? 15 : 30}
+          duration={adSeconds}
           onAdComplete={handleAdComplete}
           onCancel={handleAdCancel}
           quality={selectedQuality}

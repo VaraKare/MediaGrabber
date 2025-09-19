@@ -1,33 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface GoogleAdProps {
-  duration: number; // Duration in seconds (15 for normal, 30 for high)
+  duration: number; // Duration in seconds (15 for free, 30 for premium)
   onAdComplete: () => void;
   onCancel: () => void;
-  quality: 'normal' | 'high';
+  quality: 'free' | 'premium';
 }
 
 export default function GoogleAd({ duration, onAdComplete, onCancel, quality }: GoogleAdProps) {
   const [timeRemaining, setTimeRemaining] = useState(duration);
   const [canSkip, setCanSkip] = useState(false);
   const [adCompleted, setAdCompleted] = useState(false);
+  const completedCalledRef = useRef(false);
 
+  // Reset the timer if duration prop changes
   useEffect(() => {
-    if (timeRemaining > 0 && !adCompleted) {
-      const timer = setTimeout(() => {
-        setTimeRemaining(timeRemaining - 1);
-      }, 1000);
+    setTimeRemaining(duration);
+    setAdCompleted(false);
+    setCanSkip(false);
+    completedCalledRef.current = false;
+  }, [duration]);
 
-      return () => clearTimeout(timer);
-    } else if (timeRemaining === 0 && !adCompleted) {
+  // Tick down every second
+  useEffect(() => {
+    if (adCompleted) return;
+    const intervalId = setInterval(() => {
+      setTimeRemaining((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(intervalId);
+  }, [adCompleted]);
+
+  // When finished, mark complete and call onAdComplete once
+  useEffect(() => {
+    if (timeRemaining === 0 && !adCompleted) {
       setAdCompleted(true);
       setCanSkip(true);
-      onAdComplete();
+      if (!completedCalledRef.current) {
+        completedCalledRef.current = true;
+        onAdComplete();
+      }
     }
-  }, [timeRemaining, adCompleted, onAdComplete, duration]);
+  }, [timeRemaining, adCompleted, onAdComplete]);
 
   const handleContinue = () => {
     if (adCompleted) {
@@ -51,7 +67,7 @@ export default function GoogleAd({ duration, onAdComplete, onCancel, quality }: 
           <CardTitle className="flex items-center justify-between">
             <span>Advertisement</span>
             <span className="text-sm font-normal text-muted-foreground">
-              {quality === 'normal' ? 'Support free downloads' : 'Support charity'}
+              {quality === 'free' ? 'Support free downloads' : 'Support charity'}
             </span>
           </CardTitle>
         </CardHeader>
@@ -68,7 +84,7 @@ export default function GoogleAd({ duration, onAdComplete, onCancel, quality }: 
               This space will display Google AdSense advertisements
             </p>
             <div className="text-xs text-muted-foreground bg-muted-foreground/10 px-3 py-2 rounded">
-              🌍 Your {quality} download helps {quality === 'normal' ? 'keep our service free' : 'support charitable causes'}
+              🌍 Your {quality} download helps {quality === 'free' ? 'keep our service free' : 'support charitable causes'}
             </div>
           </div>
 

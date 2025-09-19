@@ -1,7 +1,9 @@
 export interface DownloadRequest {
   url: string;
   platform: 'youtube' | 'instagram' | 'twitter' | 'tiktok';
-  quality: 'normal' | 'high';
+  quality: 'free' | 'premium';
+  format: 'mp3' | 'mp4';
+  resolution?: '144p' | '240p' | '360p' | '480p' | '720p' | '1080p' | '1440p' | '2160p';
 }
 
 export interface DownloadProgress {
