@@ -6,12 +6,14 @@ import { serveStatic, log } from "./utils";
 
 const app = express();
 
-// CORS Middleware
-const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',').map(origin => origin.trim());
-if (allowedOrigins && allowedOrigins.length > 0) {
-    app.use(cors({ origin: allowedOrigins }));
-    log(`CORS enabled for: ${allowedOrigins.join(", ")}`);
-}
+const allowedOrigins = [
+    /^https:\/\/.*-passitpal\.vercel\.app$/,
+    'https://downloadmedia-umber.vercel.app',
+    'https://mediagrabber-elbv.onrender.com'
+];
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+log(`CORS enabled for specific origins.`);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -69,9 +71,6 @@ app.use((req, res, next) => {
       const { setupVite } = await import("./vite");
       await setupVite(app, server);
     } else {
-      app.get("/", (_req, res) => {
-        res.sendFile(path.resolve(import.meta.dirname, "public", "index.html"));
-      });
       serveStatic(app);
     }
   }
