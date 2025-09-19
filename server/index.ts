@@ -9,13 +9,14 @@ const app = express();
 app.use(cors({
     origin: function (origin, callback) {
         const allowedOrigins = [
-            /^https:\/\/.*-passitpal\.vercel\.app$/,
-            'https://downloadmedia-umber.vercel.app',
+            /^https:\/\/downloadmedia-.*\.vercel\.app$/,
             'https://mediagrabber-elbv.onrender.com'
         ];
         if (!origin || allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
+            log(`CORS: Allowed origin: ${origin}`);
             callback(null, true);
         } else {
+            log(`CORS: Disallowed origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
