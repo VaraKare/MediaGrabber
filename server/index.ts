@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
+import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./utils";
 
@@ -68,6 +69,9 @@ app.use((req, res, next) => {
       const { setupVite } = await import("./vite");
       await setupVite(app, server);
     } else {
+      app.get("/", (_req, res) => {
+        res.sendFile(path.resolve(import.meta.dirname, "public", "index.html"));
+      });
       serveStatic(app);
     }
   }
