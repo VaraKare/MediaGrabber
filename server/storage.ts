@@ -38,7 +38,7 @@ export class MemStorage implements IStorage {
         month,
         year,
         totalRaised: 8247, // Current demo values
-        downloads: 12450, // Updated from premiumDownloads
+        highQualityDownloads: 12450,
         beneficiaries: 156,
         updatedAt: new Date(),
       };
@@ -98,7 +98,7 @@ export class MemStorage implements IStorage {
       month,
       year,
       totalRaised: updates.totalRaised ?? existing?.totalRaised ?? 0,
-      downloads: updates.downloads ?? existing?.downloads ?? 0, // Updated from premiumDownloads
+      highQualityDownloads: updates.highQualityDownloads ?? existing?.highQualityDownloads ?? 0,
       beneficiaries: updates.beneficiaries ?? existing?.beneficiaries ?? 0,
       updatedAt: new Date(),
     };

@@ -4,10 +4,10 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface GoogleAdProps {
-  duration: number; // Duration in seconds (15 for free, 30 for premium)
+  duration: number; // Duration in seconds (15 for normal, 30 for high)
   onAdComplete: () => void;
   onCancel: () => void;
-  quality: 'free' | 'premium';
+  quality: 'normal' | 'high';
 }
 
 export default function GoogleAd({ duration, onAdComplete, onCancel, quality }: GoogleAdProps) {
@@ -51,7 +51,7 @@ export default function GoogleAd({ duration, onAdComplete, onCancel, quality }: 
           <CardTitle className="flex items-center justify-between">
             <span>Advertisement</span>
             <span className="text-sm font-normal text-muted-foreground">
-              {quality === 'free' ? 'Support free downloads' : 'Support charity'}
+              {quality === 'normal' ? 'Support free downloads' : 'Support charity'}
             </span>
           </CardTitle>
         </CardHeader>
@@ -68,7 +68,7 @@ export default function GoogleAd({ duration, onAdComplete, onCancel, quality }: 
               This space will display Google AdSense advertisements
             </p>
             <div className="text-xs text-muted-foreground bg-muted-foreground/10 px-3 py-2 rounded">
-              🌍 Your {quality} download helps {quality === 'free' ? 'keep our service free' : 'support charitable causes'}
+              🌍 Your {quality} download helps {quality === 'normal' ? 'keep our service free' : 'support charitable causes'}
             </div>
           </div>
 

@@ -118,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 async function processDownload(downloadId: string, quality: InsertDownload['quality']) {
   try {
-    const adWaitTime = quality === 'premium' ? 30000 : 15000;
+    const adWaitTime = quality === 'high' ? 30000 : 15000;
     await new Promise(resolve => setTimeout(resolve, adWaitTime));
 
     await storage.updateDownload(downloadId, { status: "processing", progress: 10 });
@@ -139,8 +139,8 @@ async function processDownload(downloadId: string, quality: InsertDownload['qual
     const currentStats = await storage.getCharityStats(month, year);
     if (currentStats) {
       await storage.updateCharityStats(month, year, {
-        totalRaised: (currentStats.totalRaised || 0) + (quality === 'premium' ? 2 : 1),
-        downloads: (currentStats.downloads || 0) + 1,
+        totalRaised: (currentStats.totalRaised || 0) + (quality === 'high' ? 2 : 1),
+        highQualityDownloads: (currentStats.highQualityDownloads || 0) + 1,
       });
     }
 

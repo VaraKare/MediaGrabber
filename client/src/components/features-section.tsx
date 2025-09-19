@@ -15,7 +15,7 @@ export default function FeaturesSection() {
     {
       icon: "fas fa-heart",
       title: "Social Impact",
-      description: "Premium downloads contribute to charitable causes automatically.",
+      description: "High-quality downloads contribute to charitable causes automatically.",
       color: "accent"
     }
   ];
@@ -26,7 +26,7 @@ export default function FeaturesSection() {
         <div className="text-center mb-12">
           <h3 className="text-3xl font-bold text-foreground mb-4">Why Choose MediaHub?</h3>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Fast, reliable downloads with a purpose. Every premium download helps make a difference.
+            Fast, reliable downloads with a purpose. Every high-quality download helps make a difference.
           </p>
         </div>
         

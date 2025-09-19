@@ -13,7 +13,7 @@ export default function CharityImpact() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h3 className="text-3xl font-bold text-foreground mb-6">Our Charitable Impact</h3>
         <p className="text-xl text-muted-foreground mb-8">
-          Every premium download helps fund important causes. Track your impact and see the difference we're making together.
+          50% of the revenue from high-quality downloads goes to charity. Track our collective impact and see the difference we're making together.
         </p>
         
         <div className="grid md:grid-cols-3 gap-6 mb-8">
@@ -29,9 +29,9 @@ export default function CharityImpact() {
           <Card className="border border-border" data-testid="card-downloads">
             <CardContent className="pt-6">
               <div className="text-3xl font-bold text-primary mb-2">
-                {stats?.premiumDownloads?.toLocaleString() || '12,450'}
+                {stats?.highQualityDownloads?.toLocaleString() || '12,450'}
               </div>
-              <div className="text-sm text-muted-foreground">Premium Downloads</div>
+              <div className="text-sm text-muted-foreground">High-Quality Downloads</div>
             </CardContent>
           </Card>
           

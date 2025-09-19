@@ -1,7 +1,7 @@
 export interface DownloadRequest {
   url: string;
   platform: 'youtube' | 'instagram' | 'twitter' | 'tiktok';
-  quality: 'free' | 'premium';
+  quality: 'normal' | 'high';
 }
 
 export interface DownloadProgress {
@@ -15,6 +15,6 @@ export interface DownloadProgress {
 
 export interface CharityStats {
   totalRaised: number;
-  premiumDownloads: number;
+  highQualityDownloads: number;
   beneficiaries: number;
 }

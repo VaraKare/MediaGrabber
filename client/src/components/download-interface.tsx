@@ -14,7 +14,7 @@ import type { DownloadRequest } from "@/types/download";
 
 export default function DownloadInterface() {
   const [urls, setUrls] = useState(['', '', '']);
-  const [selectedQuality, setSelectedQuality] = useState<'free' | 'premium'>('free');
+  const [selectedQuality, setSelectedQuality] = useState<'normal' | 'high'>('normal');
   const [activeDownloads, setActiveDownloads] = useState<string[]>([]);
   const [showAd, setShowAd] = useState(false);
   const [pendingDownloads, setPendingDownloads] = useState<DownloadRequest[]>([]);
@@ -59,7 +59,6 @@ export default function DownloadInterface() {
       return;
     }
 
-    // Validate URLs
     const validations = validUrls.map(url => validateURL(url));
     const invalidUrls = validations.filter(v => !v.isValid);
     
@@ -72,7 +71,6 @@ export default function DownloadInterface() {
       return;
     }
 
-    // Prepare download requests
     const downloadRequests: DownloadRequest[] = [];
     for (let i = 0; i < validUrls.length; i++) {
       const url = validUrls[i];
@@ -87,14 +85,12 @@ export default function DownloadInterface() {
       }
     }
 
-    // Store pending downloads and show ad
     setPendingDownloads(downloadRequests);
     setShowAd(true);
   };
 
   const handleAdComplete = () => {
     setShowAd(false);
-    // Process all pending downloads after ad completion
     pendingDownloads.forEach(downloadData => {
       createDownloadMutation.mutate(downloadData);
     });
@@ -120,7 +116,6 @@ export default function DownloadInterface() {
           </CardHeader>
           <CardContent className="space-y-8">
             
-            {/* URL Input Fields */}
             <div className="space-y-4">
               {[0, 1, 2].map((index) => (
                 <div key={index} className="relative">
@@ -159,61 +154,53 @@ export default function DownloadInterface() {
               ))}
             </div>
 
-            {/* Quality Selector */}
             <div>
               <h4 className="text-lg font-medium text-foreground mb-4">Choose Quality</h4>
               <div className="grid md:grid-cols-2 gap-4">
-                {/* Free Quality Option */}
+                {/* Normal Quality Option */}
                 <div 
                   className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                    selectedQuality === 'free' 
+                    selectedQuality === 'normal' 
                       ? 'border-ring bg-accent/5' 
                       : 'border-border hover:border-ring'
                   }`}
-                  onClick={() => setSelectedQuality('free')}
-                  data-testid="option-quality-free"
+                  onClick={() => setSelectedQuality('normal')}
+                  data-testid="option-quality-normal"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-medium text-foreground">Free Quality</h5>
-                    <span className="bg-secondary text-secondary-foreground px-2 py-1 rounded text-xs font-medium">
-                      FREE
-                    </span>
+                    <h5 className="font-medium text-foreground">Normal Quality</h5>
                   </div>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li>• Video: 480p MP4</li>
                     <li>• Audio: 128kbps MP3</li>
-                    <li>• Watch 15s Google ad</li>
+                    <li>• Watch 15s ad</li>
                     <li>• Helps keep service free</li>
                   </ul>
                 </div>
                 
-                {/* Premium Quality Option */}
+                {/* High Quality Option */}
                 <div 
                   className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                    selectedQuality === 'premium' 
+                    selectedQuality === 'high' 
                       ? 'border-accent bg-accent/5 border-2' 
                       : 'border-accent hover:border-accent/80 bg-accent/5'
                   }`}
-                  onClick={() => setSelectedQuality('premium')}
-                  data-testid="option-quality-premium"
+                  onClick={() => setSelectedQuality('high')}
+                  data-testid="option-quality-high"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-medium text-foreground">Premium Quality</h5>
-                    <span className="bg-accent text-accent-foreground px-2 py-1 rounded text-xs font-medium">
-                      PREMIUM
-                    </span>
+                    <h5 className="font-medium text-foreground">High Quality</h5>
                   </div>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li>• Video: 720p, 1080p MP4</li>
                     <li>• Audio: 320kbps MP3</li>
                     <li>• Watch 30s ad</li>
-                    <li>• Supports charity</li>
+                    <li>• 50% of ad revenue supports charity</li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* Download Button */}
             <Button 
               className="w-full py-4 text-lg"
               onClick={handleDownload}
@@ -224,7 +211,6 @@ export default function DownloadInterface() {
               {createDownloadMutation.isPending ? 'Starting Download...' : 'Start Download'}
             </Button>
 
-            {/* Progress Section */}
             {activeDownloads.length > 0 && (
               <DownloadProgress downloadIds={activeDownloads} />
             )}
@@ -232,10 +218,9 @@ export default function DownloadInterface() {
         </Card>
       </div>
       
-      {/* Google Ad Modal */}
       {showAd && (
         <GoogleAd 
-          duration={selectedQuality === 'free' ? 15 : 30}
+          duration={selectedQuality === 'normal' ? 15 : 30}
           onAdComplete={handleAdComplete}
           onCancel={handleAdCancel}
           quality={selectedQuality}
@@ -261,19 +246,15 @@ function DownloadItem({ downloadId }: { downloadId: string }) {
     queryKey: ["/api/downloads", downloadId],
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      // Poll every 1000ms for pending and processing downloads
-      // Stop polling when completed, failed, or no data
       return (status === 'pending' || status === 'processing') ? 1000 : false;
     },
   });
 
-  // Track completion of premium downloads for charity stats invalidation
   useEffect(() => {
-    if (download?.status === 'completed' && download.quality === 'premium') {
-      // Invalidate charity stats cache when a premium download completes
+    if (download?.status === 'completed') {
       queryClient.invalidateQueries({ queryKey: ["/api/charity/stats"] });
     }
-  }, [download?.status, download?.quality]);
+  }, [download?.status]);
 
   if (!download) return null;
 
