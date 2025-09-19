@@ -9,7 +9,10 @@ const app = express();
 // CORS Middleware
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',').map(origin => origin.trim());
 if (allowedOrigins && allowedOrigins.length > 0) {
-    app.use(cors({ origin: allowedOrigins }));
+    app.use(cors({ 
+        origin: allowedOrigins,
+        credentials: true
+    }));
     log(`CORS enabled for: ${allowedOrigins.join(", ")}`);
 }
 

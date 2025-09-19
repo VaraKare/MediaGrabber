@@ -24,6 +24,13 @@ app.use(cors({
 }));
 log(`CORS enabled for specific origins.`);
 
+app.use((_req, res, next) => {
+    res.on('finish', () => {
+        log(`Response headers: ${JSON.stringify(res.getHeaders())}`);
+    });
+    next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
