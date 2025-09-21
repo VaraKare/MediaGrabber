@@ -24,7 +24,11 @@ export default function CharityImpact() {
   const { data: stats, isLoading } = useQuery<CharityStats>({
     queryKey: ["/api/charity/stats"],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/charity/stats`);
+      if (!API_BASE_URL) {
+        console.error("VITE_API_BASE_URL is not set. API calls will fail in production.");
+      }
+      const fullUrl = new URL('/api/charity/stats', API_BASE_URL || window.location.origin).href;
+      const response = await fetch(fullUrl);
       if (!response.ok) {
         throw new Error("Failed to fetch charity stats.");
       }
