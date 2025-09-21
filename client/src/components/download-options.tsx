@@ -3,12 +3,14 @@ import { Label } from "./ui/label";
 import { Skeleton } from "./ui/skeleton";
 import React from "react";
 
+export type Resolution = "144p" | "240p" | "360p" | "480p" | "720p" | "1080p" | "1440p" | "2160p";
+
 interface DownloadOptionsProps {
   formats: any;
   selectedFormat: string;
   setSelectedFormat: React.Dispatch<React.SetStateAction<"mp3" | "mp4">>;
   selectedResolution: string;
-  setSelectedResolution: React.Dispatch<React.SetStateAction<"144p" | "240p" | "360p" | "480p" | "720p" | "1080p" | "1440p" | "2160p">>;
+  setSelectedResolution: React.Dispatch<React.SetStateAction<Resolution>>;
   selectedBitrate: string;
   setSelectedBitrate: React.Dispatch<React.SetStateAction<string>>;
   isFetchingFormats: boolean;
