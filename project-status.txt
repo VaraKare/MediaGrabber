@@ -1,39 +1,33 @@
-Backend (API)
-- Added: format (mp3/mp4) and resolution fields; quality is now free/premium
-- Endpoints:
-  - GET /api/formats?url=... → returns available formats (YouTube only, mocked)
-  - POST /api/downloads validates url/platform/format/resolution; simulates ad wait and completes
-- TODO (next):
-  1) Integrate yt-dlp + ffmpeg in Render container; probe formats and download
-  2) Persist files to S3 (or local disk) and serve via /api/downloads/:id/file
-  3) Rate limiting + basic abuse protection
-  4) Expand platforms: Instagram, Twitter (return coming soon until implemented)
+### MediaGrabber Project TODO
 
-Frontend (SPA)
-- Added UI to select format (MP3/MP4) and resolution (MP4 only)
-- Ad logic: ≤480p → 15s, >480p → 30s; premium tier also shows 30s
-- Uses default queryFn for React Query
-- TODO (next):
-  1) Fetch /api/formats to dynamically populate resolution list per URL
-  2) Show platform-specific “coming soon” UX inline
-  3) Add error boundary and toast details on failures
-  4) Improve progress view (ETA, speed) after yt-dlp integration
+**Phase 1: Core Functionality & Stability**
 
-DevOps
-- Vercel: SPA only (dist/public)
-- Render: API with CORS for Vercel + localhost
-- TODO (next):
-  1) Add ENV on Render for yt-dlp/ffmpeg paths and S3 credentials
-  2) Point VITE_API_BASE_URL to Render API
-  3) Add custom domains and HTTPS if needed
+*   [ ] **Setup & Diagnosis:**
+    *   [ ] Install necessary dependencies, including `fluent-ffmpeg`.
+    *   [ ] Run `npm run build` and `npm run check` to diagnose and fix any existing build, type-checking, and test failures.
+*   [ ] **Backend - Video Processing:**
+    *   [ ] Create a new `url-validator.ts` in the `shared` directory to validate URLs from YouTube, Twitter, Instagram, and Pinterest.
+    *   [ ] Implement a `/api/fetch-info` endpoint in `server/routes.ts` that accepts a URL and uses `yt-dlp-exec` to return video metadata (title, thumbnail, available formats).
+    *   [ ] Implement a `/api/download` endpoint. This endpoint will take a URL and a format ID.
+    *   [ ] In the `/api/download` endpoint, add logic to use `ffmpeg` to merge separate video and audio streams when a high-quality format is requested.
+*   [ ] **Frontend - UI/UX:**
+    *   [ ] Update `client/src/components/download-interface.tsx` to call the `/api/fetch-info` endpoint and display the video preview.
+    *   [ ] Create a `client/src/components/download-options.tsx` component to display MP3/MP4 and resolution choices based on the fetched data.
+    *   [ ] Implement the ad display logic: when a user selects a format, show a `google-ad.tsx` component with a 15 or 30-second timer before initiating the download from the `/api/download` endpoint.
 
-Charity
-- Premium completes increment premiumDownloads and adds +₹2 equivalent to totalRaised (mock)
-- TODO (next): wire real currency and donation accounting
+**Phase 2: Charity & Monetization**
 
-Cutover Plan
-1) Implement yt-dlp probing + download on API
-2) Wire dynamic formats UI using /api/formats
-3) Store files to S3; update file endpoint
-4) Launch Instagram/Twitter as coming soon
-5) QA + rate limit + ship
+*   [ ] **Database & Stats:**
+    *   [ ] Define a database schema in `shared/schema.ts` to track total donations and ad-revenue share for charity.
+    *   [ ] Create a `/api/stats` endpoint to retrieve the charity donation totals.
+    *   [ ] Create a `/api/record-ad-view` endpoint that the frontend can call after a 30-second ad is viewed to update the database.
+*   [ ] **Frontend - Charity:**
+    *   [ ] Update the `client/src/components/charity-impact.tsx` component to display the numbers from the `/api/stats` endpoint.
+    *   [ ] Integrate Stripe into the `client/src/pages/donate.tsx` page for direct donations.
+
+**Phase 3: Finalization**
+
+*   [ ] **Content:**
+    *   [ ] Add "Coming Soon" placeholders for other social media downloaders.
+*   [ ] **Documentation:**
+    *   [ ] Create a final `README.md` section with clear instructions on how to set up and run the project locally.

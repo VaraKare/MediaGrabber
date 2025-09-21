@@ -2,8 +2,18 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import { storage } from "./storage";
-import { insertDownloadSchema, type InsertDownload } from "@shared/schema";
+import { insertDownloadSchema, type InsertDownload as InsertDownloadType } from "@shared/schema";
 import { z } from "zod";
+import { getFormats } from "./yt-dlp";
+import youtubedl from "youtube-dl-exec";
+import fs from "fs";
+import path from "path";
+import { getUrlPlatform } from "@shared/url-validator";
+import ffmpeg from 'fluent-ffmpeg';
+
+interface InsertDownload extends InsertDownloadType {
+  filePath?: string | null;
+}
 
 // Initialize Stripe
 let stripe: Stripe | null = null;
@@ -61,45 +71,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Return available format/resolution options (YouTube only for now)
-  app.get("/api/formats", async (req, res) => {
+  app.get("/api/fetch-info", async (req, res) => {
     try {
       const url = z.string().url().parse(req.query.url);
-      const isYoutube = /youtube\.com|youtu\.be/.test(url);
-      if (!isYoutube) {
+      const platform = getUrlPlatform(url);
+
+      if (platform === 'other') {
         return res.status(400).json({ error: "Coming soon for this platform" });
       }
-      // Mocked options for now; replace with yt-dlp probing later
+
+      const ytDlpInfo = await getFormats(url);
+
+      const mp4Resolutions = new Set<string>();
+      const mp3Bitrates = new Set<string>();
+
+      if (ytDlpInfo.formats) {
+        ytDlpInfo.formats.forEach((format: any) => {
+          if (format.ext === 'mp4' && format.height) {
+            mp4Resolutions.add(`${format.height}p`);
+          } else if (format.ext === 'm4a' && format.acodec !== 'none' && format.abr) {
+            mp3Bitrates.add(`${Math.round(format.abr)}kbps`);
+          }
+        });
+      }
+
+      const uniqueMp4Resolutions = Array.from(mp4Resolutions).sort((a, b) => parseInt(a) - parseInt(b));
+      const uniqueMp3Bitrates = Array.from(mp3Bitrates).sort((a, b) => parseInt(a) - parseInt(b));
+
       res.json({
+        title: ytDlpInfo.title,
+        thumbnail: ytDlpInfo.thumbnail,
+        platform,
         formats: [
-          { format: "mp4", resolutions: ["144p","240p","360p","480p","720p","1080p","1440p","2160p"] },
-          { format: "mp3", bitrates: ["128kbps","192kbps","320kbps"] }
+          { format: 'mp4', resolutions: uniqueMp4Resolutions },
+          { format: 'mp3', bitrates: uniqueMp3Bitrates },
         ]
       });
     } catch (error) {
-      res.status(400).json({ error: "Invalid url" });
+      console.error("Error fetching formats:", error);
+      res.status(400).json({ error: "Invalid url or failed to fetch formats" });
     }
   });
 
-  app.post("/api/downloads", async (req, res) => {
+  app.post("/api/download", async (req, res) => {
     try {
-      const validatedData = insertDownloadSchema.parse(req.body);
-      // Enforce platform and resolution rules for now
-      const isYoutube = validatedData.platform === 'youtube';
-      if (!isYoutube) {
-        return res.status(400).json({ error: "Coming soon for this platform" });
-      }
-      if (validatedData.format === 'mp3') {
-        // resolution not needed
-      } else {
-        const allowed = ["144p","240p","360p","480p","720p","1080p","1440p","2160p"];
-        if (!validatedData.resolution || !allowed.includes(validatedData.resolution)) {
-          return res.status(400).json({ error: "Invalid or missing resolution" });
+      const { url, format, quality } = z.object({
+        url: z.string().url(),
+        format: z.enum(['mp3', 'mp4']),
+        quality: z.string(),
+      }).parse(req.body);
+
+      const videoInfo = await youtubedl(url, { dumpSingleJson: true });
+
+      if (format === 'mp4') {
+        const videoFormat = videoInfo.formats.find(f => f.format_note === quality && f.ext === 'mp4');
+        const audioFormat = videoInfo.formats.find(f => f.acodec !== 'none' && f.ext === 'm4a');
+
+        if (videoFormat && audioFormat) {
+          const videoStream = youtubedl(url, { format: videoFormat.format_id, output: '-' });
+          const audioStream = youtubedl(url, { format: audioFormat.format_id, output: '-' });
+
+          res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp4"`);
+
+          ffmpeg()
+            .input(videoStream)
+            .input(audioStream)
+            .outputOptions('-c:v copy')
+            .outputOptions('-c:a aac')
+            .toFormat('mp4')
+            .pipe(res, { end: true });
+
+        } else {
+          // Fallback to a direct download if merging is not needed or possible
+          const bestFormat = videoInfo.formats.find(f => f.format_note === quality && f.ext === 'mp4' && f.acodec !== 'none');
+          if (bestFormat) {
+            res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp4"`);
+            youtubedl(url, { format: bestFormat.format_id }).pipe(res);
+          } else {
+            res.status(404).json({ error: "Requested quality not found" });
+          }
         }
+      } else if (format === 'mp3') {
+        res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
+        youtubedl(url, { extractAudio: true, audioFormat: 'mp3' }).pipe(res);
       }
-      const download = await storage.createDownload(validatedData);
-      processDownload(download.id, validatedData.quality);
-      res.json(download);
+
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid download data", details: error.errors });
@@ -110,76 +166,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/downloads/:id", async (req, res) => {
+  app.post("/api/record-ad-view", async (req, res) => {
     try {
-      const download = await storage.getDownload(req.params.id);
-      if (!download) return res.status(404).json({ error: "Download not found" });
-      res.json(download);
+        await storage.incrementPremiumDownloads();
+        res.status(200).json({ success: true });
     } catch (error) {
-      console.error("Error fetching download:", error);
-      res.status(500).json({ error: "Failed to fetch download" });
+        console.error("Error recording ad view:", error);
+        res.status(500).json({ error: "Failed to record ad view" });
     }
   });
 
-  app.get("/api/downloads", async (req, res) => {
-    try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const downloads = await storage.getRecentDownloads(limit);
-      res.json(downloads);
-    } catch (error) {
-      console.error("Error fetching downloads:", error);
-      res.status(500).json({ error: "Failed to fetch downloads" });
-    }
-  });
-
-  app.get("/api/downloads/:id/file", async (req, res) => {
-    try {
-      const download = await storage.getDownload(req.params.id);
-      if (!download || download.status !== "completed") return res.status(404).send();
-      const isMp3 = (download as any).format === 'mp3';
-      const sampleContent = Buffer.from(isMp3 ? "Sample MP3 file content" : "Sample MP4 file content");
-      res.setHeader('Content-Type', isMp3 ? 'audio/mpeg' : 'video/mp4');
-      res.setHeader('Content-Disposition', `attachment; filename="${download.title || 'download'}.${isMp3 ? 'mp3' : 'mp4'}"`);
-      res.send(sampleContent);
-    } catch (error) {
-      console.error("Error serving file:", error);
-      res.status(500).send();
-    }
-  });
+  
 
   return createServer(app);
 }
 
-async function processDownload(downloadId: string, quality: InsertDownload['quality']) {
-  try {
-    const adWaitTime = quality === 'premium' ? 30000 : 15000;
-    await new Promise(resolve => setTimeout(resolve, adWaitTime));
 
-    await storage.updateDownload(downloadId, { status: "processing", progress: 10 });
-
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing
-
-    await storage.updateDownload(downloadId, {
-      status: "completed",
-      progress: 100,
-      title: "Sample Media File",
-      downloadUrl: `/api/downloads/${downloadId}/file`,
-      completedAt: new Date(),
-    });
-
-    const now = new Date();
-    const month = now.toLocaleString('default', { month: 'long' });
-    const year = now.getFullYear();
-    const currentStats = await storage.getCharityStats(month, year);
-    if (currentStats) {
-      await storage.updateCharityStats(month, year, {
-        totalRaised: (currentStats.totalRaised || 0) + (quality === 'premium' ? 2 : 1),
-        premiumDownloads: (currentStats as any).premiumDownloads + (quality === 'premium' ? 1 : 0),
-      });
-    }
-
-  } catch (error) {
-    console.error(`Error processing download ${downloadId}:`, error);
-    await storage.updateDownload(downloadId, { status: "failed", progress: 0 });
-  }
-}

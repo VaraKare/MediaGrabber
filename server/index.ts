@@ -11,7 +11,8 @@ app.use(cors({
         const allowedOrigins = [
             /^https:\/\/downloadmedia-.*\.vercel\.app$/,
             'https://mediagrabber-elbv.onrender.com',
-            'http://localhost:5001'
+            'http://localhost:5001',
+            'http://localhost:5173'
         ];
         if (!origin || allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
             log(`CORS: Allowed origin: ${origin}`);

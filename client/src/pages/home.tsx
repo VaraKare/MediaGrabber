@@ -42,6 +42,20 @@ export default function Home() {
               </div>
               <span className="text-sm text-muted-foreground">Twitter</span>
             </div>
+            <div className="flex flex-col items-center opacity-50">
+              <div className="bg-red-700 p-3 rounded-full mb-2">
+                <i className="fab fa-pinterest text-white text-xl"></i>
+              </div>
+              <span className="text-sm text-muted-foreground">Pinterest</span>
+              <span className="text-xs text-accent-foreground">(Coming Soon)</span>
+            </div>
+            <div className="flex flex-col items-center opacity-50">
+              <div className="bg-black p-3 rounded-full mb-2">
+                <i className="fab fa-tiktok text-white text-xl"></i>
+              </div>
+              <span className="text-sm text-muted-foreground">TikTok</span>
+              <span className="text-xs text-accent-foreground">(Coming Soon)</span>
+            </div>
           </div>
         </div>
       </section>

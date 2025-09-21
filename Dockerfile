@@ -1,6 +1,10 @@
 # Multi-stage build for production efficiency
 FROM node:22-alpine AS builder
 
+# Install Python and pip for yt-dlp
+RUN apk add --no-cache python3 py3-pip
+RUN pip install yt-dlp
+
 # Set working directory
 WORKDIR /app
 
@@ -27,8 +31,9 @@ RUN npm run build
 # Production stage
 FROM node:22-alpine AS runtime
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install curl for healthcheck, and Python/pip for yt-dlp
+RUN apk add --no-cache curl python3 py3-pip
+RUN pip install yt-dlp
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -53,11 +58,11 @@ ENV NODE_ENV=production
 USER mediahub
 
 # Expose port
-EXPOSE 5000
+EXPOSE 5001
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:5000/api/charity/stats || exit 1
+  CMD curl -f http://localhost:5001/api/charity/stats || exit 1
 
 # Start the application
 CMD ["npm", "start"]

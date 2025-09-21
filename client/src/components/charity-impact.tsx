@@ -1,11 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { CharityStats } from "@shared/schema";
+import type { CharityStats as CharityStatsType } from "@shared/schema";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface CharityStats extends CharityStatsType {
+  highQualityDownloads?: number | null;
+}
+
+// Helper to format currency
+const formatCurrency = (amount: number) => {
+  // API returns cents, so divide by 100
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+  }).format(amount / 100);
+};
 
 export default function CharityImpact() {
-  const { data: stats } = useQuery<CharityStats>({
+  const { data: stats, isLoading } = useQuery<CharityStats>({
     queryKey: ["/api/charity/stats"],
+    queryFn: async () => {
+      const response = await fetch("/api/charity/stats");
+      if (!response.ok) {
+        throw new Error("Failed to fetch charity stats.");
+      }
+      return response.json();
+    },
   });
 
   return (
@@ -20,7 +42,7 @@ export default function CharityImpact() {
           <Card className="border border-border" data-testid="card-total-raised">
             <CardContent className="pt-6">
               <div className="text-3xl font-bold text-secondary mb-2">
-                ₹{stats?.totalRaised?.toLocaleString() || '8,247'}
+                {isLoading ? <Skeleton className="h-8 w-3/4 mx-auto" /> : <span>{stats?.totalRaised ? formatCurrency(stats.totalRaised) : '₹0.00'}</span>}
               </div>
               <div className="text-sm text-muted-foreground">Total Raised This Month</div>
             </CardContent>
@@ -29,7 +51,7 @@ export default function CharityImpact() {
           <Card className="border border-border" data-testid="card-downloads">
             <CardContent className="pt-6">
               <div className="text-3xl font-bold text-primary mb-2">
-                {stats?.highQualityDownloads?.toLocaleString() || '12,450'}
+                {isLoading ? <Skeleton className="h-8 w-1/2 mx-auto" /> : <span>{stats?.premiumDownloads?.toLocaleString() || '0'}</span>}
               </div>
               <div className="text-sm text-muted-foreground">High-Quality Downloads</div>
             </CardContent>
@@ -38,7 +60,7 @@ export default function CharityImpact() {
           <Card className="border border-border" data-testid="card-beneficiaries">
             <CardContent className="pt-6">
               <div className="text-3xl font-bold text-accent mb-2">
-                {stats?.beneficiaries?.toLocaleString() || '156'}
+                {isLoading ? <Skeleton className="h-8 w-1/2 mx-auto" /> : <span>{stats?.beneficiaries?.toLocaleString() || '0'}</span>}
               </div>
               <div className="text-sm text-muted-foreground">Lives Impacted</div>
             </CardContent>
