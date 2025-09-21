@@ -121,11 +121,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quality: z.string(),
       }).parse(req.body);
 
-      const videoInfo = await youtubedl(url, { dumpSingleJson: true });
+      const videoInfo = JSON.parse(await youtubedl(url, { dumpSingleJson: true }) as any);
 
       if (format === 'mp4') {
-        const videoFormat = videoInfo.formats.find(f => f.format_note === quality && f.ext === 'mp4');
-        const audioFormat = videoInfo.formats.find(f => f.acodec !== 'none' && f.ext === 'm4a');
+        const videoFormat = videoInfo.formats.find((f: any) => f.format_note === quality && f.ext === 'mp4');
+        const audioFormat = videoInfo.formats.find((f: any) => f.acodec !== 'none' && f.ext === 'm4a');
 
         if (videoFormat && audioFormat) {
           const videoStream = youtubedl(url, { format: videoFormat.format_id, output: '-' });
@@ -133,9 +133,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp4"`);
 
-          ffmpeg()
-            .input(videoStream)
-            .input(audioStream)
+          (ffmpeg() as any)
+            .input(videoStream as any)
+            .input(audioStream as any)
             .outputOptions('-c:v copy')
             .outputOptions('-c:a aac')
             .toFormat('mp4')
@@ -143,17 +143,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         } else {
           // Fallback to a direct download if merging is not needed or possible
-          const bestFormat = videoInfo.formats.find(f => f.format_note === quality && f.ext === 'mp4' && f.acodec !== 'none');
+          const bestFormat = videoInfo.formats.find((f: any) => f.format_note === quality && f.ext === 'mp4' && f.acodec !== 'none');
           if (bestFormat) {
             res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp4"`);
-            youtubedl(url, { format: bestFormat.format_id }).pipe(res);
+            (youtubedl(url, { format: bestFormat.format_id }) as any).pipe(res);
           } else {
             res.status(404).json({ error: "Requested quality not found" });
           }
         }
       } else if (format === 'mp3') {
         res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
-        youtubedl(url, { extractAudio: true, audioFormat: 'mp3' }).pipe(res);
+        (youtubedl(url, { extractAudio: true, audioFormat: 'mp3' }) as any).pipe(res);
       }
 
     } catch (error) {
