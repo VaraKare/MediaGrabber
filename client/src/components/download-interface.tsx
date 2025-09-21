@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import GoogleAd from "@/components/google-ad";
 import { DownloadOptions, type Resolution } from "./download-options";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface VideoInfo {
   title: string;
   thumbnail: string;
@@ -29,7 +31,7 @@ export default function DownloadInterface() {
   const { isFetching, refetch } = useQuery({
     queryKey: ["fetch-info", url],
     queryFn: async () => {
-      const response = await fetch(`/api/fetch-info?url=${encodeURIComponent(url)}`);
+      const response = await fetch(`${API_BASE_URL}/api/fetch-info?url=${encodeURIComponent(url)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch video information.');
       }
@@ -67,7 +69,7 @@ export default function DownloadInterface() {
   const startDownload = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch('/api/download', {
+      const response = await fetch(`${API_BASE_URL}/api/download`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, format, quality: format === 'mp4' ? resolution : bitrate }),
@@ -106,7 +108,7 @@ export default function DownloadInterface() {
   const handleAdComplete = () => {
     setShowAd(false);
     if (format === 'mp4' && parseInt(resolution) > 480) {
-      fetch('/api/record-ad-view', { method: 'POST' });
+      fetch(`${API_BASE_URL}/api/record-ad-view`, { method: 'POST' });
     }
     startDownload();
   };

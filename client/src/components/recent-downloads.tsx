@@ -4,6 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "./ui/badge";
 import { Download } from "lucide-react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface RecentDownloadsProps {
   downloads: any[];
 }
@@ -34,7 +36,7 @@ export function RecentDownloads({ downloads }: RecentDownloadsProps) {
                 <TableCell><Badge>{d.status}</Badge></TableCell>
                 <TableCell>
                   {d.status === 'completed' && (
-                    <a href={`/api/downloads/${d.id}/file`} download>
+                    <a href={`${API_BASE_URL}/api/downloads/${d.id}/file`} download>
                       <Download className="h-5 w-5" />
                     </a>
                   )}

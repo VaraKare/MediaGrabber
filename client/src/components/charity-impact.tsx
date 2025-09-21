@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { CharityStats as CharityStatsType } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 interface CharityStats extends CharityStatsType {
   highQualityDownloads?: number | null;
 }
@@ -22,7 +24,7 @@ export default function CharityImpact() {
   const { data: stats, isLoading } = useQuery<CharityStats>({
     queryKey: ["/api/charity/stats"],
     queryFn: async () => {
-      const response = await fetch("/api/charity/stats");
+      const response = await fetch(`${API_BASE_URL}/api/charity/stats`);
       if (!response.ok) {
         throw new Error("Failed to fetch charity stats.");
       }
