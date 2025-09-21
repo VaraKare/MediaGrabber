@@ -3,7 +3,7 @@ FROM node:22-alpine AS builder
 
 # Install Python and pip for yt-dlp
 RUN apk add --no-cache python3 py3-pip
-RUN pip install yt-dlp
+RUN pip install yt-dlp --break-system-packages
 
 # Set working directory
 WORKDIR /app
@@ -33,7 +33,7 @@ FROM node:22-alpine AS runtime
 
 # Install curl for healthcheck, and Python/pip for yt-dlp
 RUN apk add --no-cache curl python3 py3-pip
-RUN pip install yt-dlp
+RUN pip install yt-dlp --break-system-packages
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
