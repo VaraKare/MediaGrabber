@@ -3,7 +3,7 @@ import type { CharityStats } from "@shared/schema";
 
 export default function CharityBanner() {
   const { data: stats } = useQuery<CharityStats>({
-    queryKey: ["/api/charity/stats"],
+    queryKey: ["charity-stats"],
   });
 
   return (

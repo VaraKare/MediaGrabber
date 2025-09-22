@@ -22,12 +22,14 @@ const formatCurrency = (amount: number) => {
 
 export default function CharityImpact() {
   const { data: stats, isLoading } = useQuery<CharityStats>({
-    queryKey: ["/api/charity/stats"],
+    queryKey: ["charity-stats"],
     queryFn: async () => {
       if (!API_BASE_URL) {
         console.error("VITE_API_BASE_URL is not set. API calls will fail in production.");
       }
+      console.log("[CharityImpact] API_BASE_URL:", API_BASE_URL);
       const fullUrl = new URL('/api/charity/stats', API_BASE_URL || window.location.origin).href;
+      console.log("[CharityImpact] Constructed URL:", fullUrl);
       const response = await fetch(fullUrl);
       if (!response.ok) {
         throw new Error("Failed to fetch charity stats.");

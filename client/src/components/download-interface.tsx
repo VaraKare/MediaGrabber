@@ -31,7 +31,10 @@ export default function DownloadInterface() {
   const { isFetching, refetch } = useQuery({
     queryKey: ["fetch-info", url],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/fetch-info?url=${encodeURIComponent(url)}`);
+      console.log("[DownloadInterface] API_BASE_URL:", API_BASE_URL);
+      const fullUrl = `${API_BASE_URL}/api/fetch-info?url=${encodeURIComponent(url)}`;
+      console.log("[DownloadInterface] Constructed URL:", fullUrl);
+      const response = await fetch(fullUrl);
       if (!response.ok) {
         throw new Error('Failed to fetch video information.');
       }
