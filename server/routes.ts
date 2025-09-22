@@ -35,8 +35,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/donations", async (req, res) => {
     try {
-      const totalDonations = mockDonations.reduce((sum, d) => sum + d.amount, 0);
-      res.json({ totalDonations, donors: mockDonations });
+      const stats = await storage.getCurrentCharityStats();
+      res.json({ totalDonations: stats?.totalRaised || 0, donors: [] });
     } catch (error) {
       console.error("Error fetching donations:", error);
       res.status(500).json({ error: "Failed to fetch donations" });
@@ -127,6 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const videoFormat = videoInfo.formats.find(f => f.format_note === quality && f.ext === 'mp4');
         const audioFormat = videoInfo.formats.find(f => f.acodec !== 'none' && f.ext === 'm4a');
 
+
         if (videoFormat && audioFormat) {
           const videoStream = youtubedl(url, { format: videoFormat.format_id, output: '-' });
           const audioStream = youtubedl(url, { format: audioFormat.format_id, output: '-' });
@@ -139,11 +140,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .outputOptions('-c:v copy')
             .outputOptions('-c:a aac')
             .toFormat('mp4')
+            .on('error', (err) => {
+              console.error('ffmpeg error:', err);
+              res.status(500).json({ error: "Failed to process video" });
+            })
             .pipe(res, { end: true });
 
         } else {
           // Fallback to a direct download if merging is not needed or possible
-          const bestFormat = videoInfo.formats.find(f => f.format_note === quality && f.ext === 'mp4' && f.acodec !== 'none');
+          const bestFormat = videoInfo.formats.find((f) => f.format_note === quality && f.ext === 'mp4' && f.acodec !== 'none');
           if (bestFormat) {
             res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp4"`);
             youtubedl(url, { format: bestFormat.format_id }).pipe(res);

@@ -3,8 +3,11 @@ import { Label } from "./ui/label";
 import { Skeleton } from "./ui/skeleton";
 import React from "react";
 
+import { Resolution, VideoInfo } from "@/types/download";
+
+
 interface DownloadOptionsProps {
-  formats: any;
+  videoInfo: VideoInfo | null;
   selectedFormat: string;
   setSelectedFormat: React.Dispatch<React.SetStateAction<"mp3" | "mp4">>;
   selectedResolution: string;
@@ -14,9 +17,9 @@ interface DownloadOptionsProps {
   isFetchingFormats: boolean;
 }
 
-export function DownloadOptions({ formats, selectedFormat, setSelectedFormat, selectedResolution, setSelectedResolution, selectedBitrate, setSelectedBitrate, isFetchingFormats }: DownloadOptionsProps) {
-  const mp4Resolutions = formats?.formats.find((f: any) => f.format === 'mp4')?.resolutions || [];
-  const mp3Bitrates = formats?.formats.find((f: any) => f.format === 'mp3')?.bitrates || [];
+export function DownloadOptions({ videoInfo, selectedFormat, setSelectedFormat, selectedResolution, setSelectedResolution, selectedBitrate, setSelectedBitrate, isFetchingFormats }: DownloadOptionsProps) {
+  const mp4Resolutions = videoInfo?.formats.find((f) => f.format === 'mp4')?.resolutions || [];
+  const mp3Bitrates = videoInfo?.formats.find((f) => f.format === 'mp3')?.bitrates || [];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -39,12 +42,12 @@ export function DownloadOptions({ formats, selectedFormat, setSelectedFormat, se
           {isFetchingFormats ? (
             <Skeleton className="h-10 w-full" />
           ) : (
-            <Select value={selectedResolution} onValueChange={(value) => setSelectedResolution(value as "144p" | "240p" | "360p" | "480p" | "720p" | "1080p" | "1440p" | "2160p")}>
+            <Select value={selectedResolution} onValueChange={(value) => setSelectedResolution(value as Resolution)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select resolution" />
               </SelectTrigger>
               <SelectContent>
-                {mp4Resolutions.map((r: string) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                {mp4Resolutions.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
@@ -62,7 +65,7 @@ export function DownloadOptions({ formats, selectedFormat, setSelectedFormat, se
                 <SelectValue placeholder="Select bitrate" />
               </SelectTrigger>
               <SelectContent>
-                {mp3Bitrates.map((b: string) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                {mp3Bitrates.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
               </SelectContent>
             </Select>
           )}

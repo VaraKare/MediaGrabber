@@ -9,6 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import GoogleAd from "@/components/google-ad";
 import { DownloadOptions } from "./download-options";
 
+import type { Resolution, VideoInfo } from "@/types/download";
+
+
 interface VideoInfo {
   title: string;
   thumbnail: string;
@@ -96,7 +99,7 @@ export default function DownloadInterface() {
 
   const handleDownloadClick = () => {
     const quality = format === 'mp4' ? parseInt(resolution) : 0;
-    if (quality > 480) {
+    if (quality < 480) {
       setShowAd(true);
     } else {
       startDownload();
@@ -105,13 +108,13 @@ export default function DownloadInterface() {
 
   const handleAdComplete = () => {
     setShowAd(false);
-    if (format === 'mp4' && parseInt(resolution) > 480) {
+    if (format === 'mp4' && parseInt(resolution) < 480) {
       fetch('/api/record-ad-view', { method: 'POST' });
     }
     startDownload();
   };
 
-  const adSeconds = format === 'mp4' && parseInt(resolution) > 480 ? 30 : 15;
+  const adSeconds = 15;
 
   return (
     <section className="py-12 bg-muted/30">
@@ -147,7 +150,7 @@ export default function DownloadInterface() {
                 </div>
 
                 <DownloadOptions
-                  formats={videoInfo}
+                  videoInfo={videoInfo}
                   selectedFormat={format}
                   setSelectedFormat={setFormat}
                   selectedResolution={resolution}

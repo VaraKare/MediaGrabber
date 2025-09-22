@@ -1,27 +1,33 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Route, Switch } from "wouter";
-import { lazy, Suspense } from "react";
+
+import React, { Suspense, lazy } from "react";
+import { Router, Route, Switch } from "wouter";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
-import { Skeleton } from "@/components/ui/skeleton";
 
-const HomePage = lazy(() => import("@/pages/home"));
-const Donation = lazy(() => import("@/pages/donation"));
+const Home = lazy(() => import("./pages/home"));
+const Donate = lazy(() => import("./pages/donate"));
+const Donation = lazy(() => import("./pages/donation"));
+const NotFound = lazy(() => import("./pages/not-found"));
 
-export default function App() {
+const App: React.FC = () => {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Header />
-      <main>
-        <Suspense fallback={<Skeleton className="w-full h-64" />}>
-          <Switch>
-            <Route path="/" component={HomePage} />
-            <Route path="/donate" component={Donation} />
-          </Switch>
-        </Suspense>
-      </main>
-      <Footer />
-      <Toaster />
-    </div>
+    <Router>
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow">
+          <Suspense fallback={<div>Loading...</div>}>
+            <Switch>
+              <Route path="/" component={Home} />
+              <Route path="/donate" component={Donate} />
+              <Route path="/donation" component={Donation} />
+              <Route component={NotFound} />
+            </Switch>
+          </Suspense>
+        </main>
+        <Footer />
+      </div>
+    </Router>
   );
-}
+};
+
+export default App;
