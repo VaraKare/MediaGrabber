@@ -3,7 +3,7 @@ export interface DownloadRequest {
   platform: 'youtube' | 'instagram' | 'twitter' | 'tiktok';
   quality: 'free' | 'premium';
   format: 'mp3' | 'mp4';
-  resolution?: Resolution;
+  resolution?: '144p' | '240p' | '360p' | '480p' | '720p' | '1080p' | '1440p' | '2160p';
 }
 
 export interface DownloadProgress {
@@ -19,19 +19,4 @@ export interface CharityStats {
   totalRaised: number;
   highQualityDownloads: number;
   beneficiaries: number;
-}
-
-export type Resolution = "144p" | "240p" | "360p" | "480p" | "720p" | "1080p" | "1440p" | "2160p";
-
-export interface Format {
-  format: 'mp4' | 'mp3';
-  resolutions?: Resolution[];
-  bitrates?: string[];
-}
-
-export interface VideoInfo {
-  title: string;
-  thumbnail: string;
-  platform: string;
-  formats: Format[];
 }

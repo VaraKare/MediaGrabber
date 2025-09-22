@@ -4,8 +4,14 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Define the types for the data we expect from the API
+interface Donor {
+  name: string;
+  amount: number;
+}
+
 interface DonationData {
   totalDonations: number;
+  donors: Donor[];
 }
 
 export default function Donation() {
@@ -60,6 +66,21 @@ export default function Donation() {
             )}
           </CardContent>
         </Card>
+
+        <h2 className="text-3xl font-bold text-foreground mb-6">Our Generous Donors</h2>
+
+        <div className="space-y-4">
+          {isLoading && <p>Loading donors...</p>}
+          {error && <p className="text-red-500">Could not load donor list.</p>}
+          {donationData && donationData.donors.map((donor, index) => (
+            <Card key={index} className="text-left">
+              <CardContent className="p-4 flex justify-between items-center">
+                <p className="font-semibold text-lg">{donor.name}</p>
+                <p className="text-green-500 font-bold">{formatCurrency(donor.amount)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
         
         <Link href="/" className="mt-12 inline-block">
           <Button className="bg-primary text-primary-foreground text-lg px-8 py-6">

@@ -1,11 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { spawn } from 'child_process';
 import Stripe from "stripe";
 import { storage } from "./storage";
 import { insertDownloadSchema, type InsertDownload as InsertDownloadType } from "@shared/schema";
 import { z } from "zod";
 import { getFormats } from "./yt-dlp";
-import youtubedl from "youtube-dl-exec";
 import fs from "fs";
 import path from "path";
 import { getUrlPlatform } from "@shared/url-validator";
@@ -14,6 +14,19 @@ import ffmpeg from 'fluent-ffmpeg';
 interface InsertDownload extends InsertDownloadType {
   filePath?: string | null;
 }
+
+// Helper to spawn a yt-dlp process for streaming
+const getDownloadStream = (url: string, args: string[]) => {
+  const allArgs = [
+      url,
+      ...args,
+      '--user-agent',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+  ];
+  const ytDlpProcess = spawn('yt-dlp', allArgs);
+  return ytDlpProcess;
+};
+
 
 // Initialize Stripe
 let stripe: Stripe | null = null;
@@ -35,8 +48,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/donations", async (req, res) => {
     try {
-      const stats = await storage.getCurrentCharityStats();
-      res.json({ totalDonations: stats?.totalRaised || 0, donors: [] });
+      const totalDonations = mockDonations.reduce((sum, d) => sum + d.amount, 0);
+      res.json({ totalDonations, donors: mockDonations });
     } catch (error) {
       console.error("Error fetching donations:", error);
       res.status(500).json({ error: "Failed to fetch donations" });
@@ -107,9 +120,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { format: 'mp3', bitrates: uniqueMp3Bitrates },
         ]
       });
-    } catch (error) {
-      console.error("Error fetching formats:", error);
-      res.status(400).json({ error: "Invalid url or failed to fetch formats" });
+    } catch (error: any) {
+        console.error("Error fetching formats:", error);
+        res.status(400).json({ error: error.message || "Invalid url or failed to fetch formats" });
     }
   });
 
@@ -121,52 +134,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quality: z.string(),
       }).parse(req.body);
 
-      const videoInfo = await youtubedl(url, { dumpSingleJson: true });
+      const videoInfo = await getFormats(url);
+
+      res.header('Content-Disposition', `attachment; filename="${videoInfo.title || 'download'}.${format}"`);
 
       if (format === 'mp4') {
-        const videoFormat = videoInfo.formats.find(f => f.format_note === quality && f.ext === 'mp4');
-        const audioFormat = videoInfo.formats.find(f => f.acodec !== 'none' && f.ext === 'm4a');
+        const videoFormat = videoInfo.formats.find((f: any) => f.format_note === quality && f.ext === 'mp4');
+        const audioFormat = videoInfo.formats.find((f: any) => f.acodec !== 'none' && f.ext === 'm4a');
 
-
-        if (videoFormat && audioFormat) {
-          const videoStream = youtubedl(url, { format: videoFormat.format_id, output: '-' });
-          const audioStream = youtubedl(url, { format: audioFormat.format_id, output: '-' });
-
-          res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp4"`);
+        // If we have separate video and audio, merge them with ffmpeg
+        if (videoFormat && videoFormat.vcodec !== 'none' && audioFormat) {
+          console.log(`Merging formats: video ${videoFormat.format_id}, audio ${audioFormat.format_id}`);
+          const videoStream = getDownloadStream(url, ['-f', videoFormat.format_id, '-o', '-']);
+          const audioStream = getDownloadStream(url, ['-f', audioFormat.format_id, '-o', '-']);
 
           ffmpeg()
-            .input(videoStream)
-            .input(audioStream)
-            .outputOptions('-c:v copy')
-            .outputOptions('-c:a aac')
+            .input(videoStream.stdout)
+            .input(audioStream.stdout)
+            .outputOptions('-c:v', 'copy')
             .toFormat('mp4')
             .on('error', (err) => {
               console.error('ffmpeg error:', err);
-              res.status(500).json({ error: "Failed to process video" });
+              // Can't send headers after they are sent, but can try to end the response.
+              if (!res.headersSent) {
+                res.status(500).json({ error: 'Error during video processing.' });
+              }
             })
             .pipe(res, { end: true });
 
-        } else {
-          // Fallback to a direct download if merging is not needed or possible
-          const bestFormat = videoInfo.formats.find((f) => f.format_note === quality && f.ext === 'mp4' && f.acodec !== 'none');
+        } else { // Otherwise, find the best format with both video and audio and stream it directly
+          const bestFormat = videoInfo.formats.find((f: any) => f.format_note === quality && f.ext === 'mp4' && f.acodec !== 'none');
           if (bestFormat) {
-            res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp4"`);
-            youtubedl(url, { format: bestFormat.format_id }).pipe(res);
+            console.log(`Direct downloading format: ${bestFormat.format_id}`);
+            const downloadProcess = getDownloadStream(url, ['-f', bestFormat.format_id, '-o', '-']);
+            downloadProcess.stdout.pipe(res);
+            downloadProcess.stderr.on('data', (data) => {
+                console.error(`yt-dlp stderr: ${data}`);
+            });
           } else {
-            res.status(404).json({ error: "Requested quality not found" });
+            res.status(404).json({ error: "Requested quality not found or available for direct download." });
           }
         }
       } else if (format === 'mp3') {
-        res.header('Content-Disposition', `attachment; filename="${videoInfo.title}.mp3"`);
-        youtubedl(url, { extractAudio: true, audioFormat: 'mp3' }).pipe(res);
+        console.log(`Extracting audio for ${url}`);
+        const downloadProcess = getDownloadStream(url, ['-x', '--audio-format', 'mp3', '-o', '-']);
+        downloadProcess.stdout.pipe(res);
+        downloadProcess.stderr.on('data', (data) => {
+            console.error(`yt-dlp stderr: ${data}`);
+        });
       }
 
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid download data", details: error.errors });
       } else {
         console.error("Error creating download:", error);
-        res.status(500).json({ error: "Failed to create download" });
+        res.status(500).json({ error: error.message || "Failed to create download" });
       }
     }
   });
@@ -181,9 +204,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  
-
   return createServer(app);
 }
-
-

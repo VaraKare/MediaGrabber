@@ -1,10 +1,10 @@
-import { Suspense, lazy } from "react";
+import Header from "@/components/header";
 import CharityBanner from "@/components/charity-banner";
 import DownloadInterface from "@/components/download-interface";
+import FeaturesSection from "@/components/features-section";
+import CharityImpact from "@/components/charity-impact";
 import AdPlacement from "@/components/ad-placement";
-
-const FeaturesSection = lazy(() => import("@/components/features-section"));
-const CharityImpact = lazy(() => import("@/components/charity-impact"));
+import Footer from "@/components/footer";
 
 export default function Home() {
   return (
@@ -62,10 +62,8 @@ export default function Home() {
 
       <DownloadInterface />
       <AdPlacement />
-      <Suspense fallback={<div>Loading...</div>}>
-        <FeaturesSection />
-        <CharityImpact />
-      </Suspense>
+      <FeaturesSection />
+      <CharityImpact />
     </div>
   );
 }

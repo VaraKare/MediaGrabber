@@ -7,10 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isValidUrl, getUrlPlatform } from "@shared/url-validator";
 import { useToast } from "@/hooks/use-toast";
 import GoogleAd from "@/components/google-ad";
-import { DownloadOptions } from "./download-options";
-
-import type { Resolution, VideoInfo } from "@/types/download";
-
+import { DownloadOptions, type Resolution } from "./download-options";
 
 interface VideoInfo {
   title: string;
@@ -23,7 +20,7 @@ export default function DownloadInterface() {
   const [url, setUrl] = useState('');
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [format, setFormat] = useState<'mp3' | 'mp4'>('mp4');
-  const [resolution, setResolution] = useState('720p');
+  const [resolution, setResolution] = useState<Resolution>('720p');
   const [bitrate, setBitrate] = useState('128kbps');
   const [showAd, setShowAd] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -99,7 +96,7 @@ export default function DownloadInterface() {
 
   const handleDownloadClick = () => {
     const quality = format === 'mp4' ? parseInt(resolution) : 0;
-    if (quality < 480) {
+    if (quality > 480) {
       setShowAd(true);
     } else {
       startDownload();
@@ -108,13 +105,13 @@ export default function DownloadInterface() {
 
   const handleAdComplete = () => {
     setShowAd(false);
-    if (format === 'mp4' && parseInt(resolution) < 480) {
+    if (format === 'mp4' && parseInt(resolution) > 480) {
       fetch('/api/record-ad-view', { method: 'POST' });
     }
     startDownload();
   };
 
-  const adSeconds = 15;
+  const adSeconds = format === 'mp4' && parseInt(resolution) > 480 ? 30 : 15;
 
   return (
     <section className="py-12 bg-muted/30">
@@ -150,7 +147,7 @@ export default function DownloadInterface() {
                 </div>
 
                 <DownloadOptions
-                  videoInfo={videoInfo}
+                  formats={videoInfo}
                   selectedFormat={format}
                   setSelectedFormat={setFormat}
                   selectedResolution={resolution}

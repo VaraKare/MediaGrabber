@@ -103,23 +103,6 @@ The application will be available at:
 - **Frontend & Backend**: http://localhost:5000
 - **API Endpoints**: http://localhost:5000/api/*
 
-### 5. Database Setup (Optional)
-
-For local development, the application uses in-memory storage by default. If you want to use a real database, you can set up a PostgreSQL database and provide the connection string in the `.env` file.
-
--   Install PostgreSQL locally or create a free database on [Vercel Neon](https://neon.tech/).
--   Add the following line to your `.env` file:
-
-```
-DATABASE_URL="your_postgresql_connection_string"
-```
-
--   Run the following command to push the schema to your database:
-
-```
-npm run db:push
-```
-
 ### 5. Build for Production
 
 ```bash
