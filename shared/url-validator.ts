@@ -6,7 +6,7 @@ const PINTEREST_REGEX = /^(https?:\/\/)?(www\.)?pinterest\.com\/(pin|\d+)\/.*$/;
 export const isValidUrl = (url: string): boolean => {
     try {
         new URL(url);
-        return true;
+        return getUrlPlatform(url) !== 'other';
     } catch (e) {
         return false;
     }
