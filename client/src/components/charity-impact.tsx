@@ -4,8 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { CharityStats as CharityStatsType } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
 interface CharityStats extends CharityStatsType {
   highQualityDownloads?: number | null;
 }
@@ -22,15 +20,9 @@ const formatCurrency = (amount: number) => {
 
 export default function CharityImpact() {
   const { data: stats, isLoading } = useQuery<CharityStats>({
-    queryKey: ["charity-stats"],
+    queryKey: ["/api/charity/stats"],
     queryFn: async () => {
-      if (!API_BASE_URL) {
-        console.error("VITE_API_BASE_URL is not set. API calls will fail in production.");
-      }
-      console.log("[CharityImpact] API_BASE_URL:", API_BASE_URL);
-      const fullUrl = new URL('/api/charity/stats', API_BASE_URL || window.location.origin).href;
-      console.log("[CharityImpact] Constructed URL:", fullUrl);
-      const response = await fetch(fullUrl);
+      const response = await fetch("/api/charity/stats");
       if (!response.ok) {
         throw new Error("Failed to fetch charity stats.");
       }

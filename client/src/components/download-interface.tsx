@@ -7,9 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isValidUrl, getUrlPlatform } from "@shared/url-validator";
 import { useToast } from "@/hooks/use-toast";
 import GoogleAd from "@/components/google-ad";
-import { DownloadOptions, type Resolution } from "./download-options";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+import { DownloadOptions } from "./download-options";
 
 interface VideoInfo {
   title: string;
@@ -22,7 +20,7 @@ export default function DownloadInterface() {
   const [url, setUrl] = useState('');
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [format, setFormat] = useState<'mp3' | 'mp4'>('mp4');
-  const [resolution, setResolution] = useState<Resolution>('720p');
+  const [resolution, setResolution] = useState('720p');
   const [bitrate, setBitrate] = useState('128kbps');
   const [showAd, setShowAd] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -31,10 +29,7 @@ export default function DownloadInterface() {
   const { isFetching, refetch } = useQuery({
     queryKey: ["fetch-info", url],
     queryFn: async () => {
-      console.log("[DownloadInterface] API_BASE_URL:", API_BASE_URL);
-      const fullUrl = `${API_BASE_URL}/api/fetch-info?url=${encodeURIComponent(url)}`;
-      console.log("[DownloadInterface] Constructed URL:", fullUrl);
-      const response = await fetch(fullUrl);
+      const response = await fetch(`/api/fetch-info?url=${encodeURIComponent(url)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch video information.');
       }
@@ -72,7 +67,7 @@ export default function DownloadInterface() {
   const startDownload = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/download`, {
+      const response = await fetch('/api/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, format, quality: format === 'mp4' ? resolution : bitrate }),
@@ -111,7 +106,7 @@ export default function DownloadInterface() {
   const handleAdComplete = () => {
     setShowAd(false);
     if (format === 'mp4' && parseInt(resolution) > 480) {
-      fetch(`${API_BASE_URL}/api/record-ad-view`, { method: 'POST' });
+      fetch('/api/record-ad-view', { method: 'POST' });
     }
     startDownload();
   };
