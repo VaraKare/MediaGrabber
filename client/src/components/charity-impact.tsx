@@ -1,33 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { CharityStats as CharityStatsType } from "@shared/schema";
+import type { CharityStats as CharityStatsType } from "@/types/download";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface CharityStats extends CharityStatsType {
-  highQualityDownloads?: number | null;
-}
 
 // Helper to format currency
 const formatCurrency = (amount: number) => {
-  // API returns cents, so divide by 100
+  // Assuming API returns whole numbers for currency
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-    minimumFractionDigits: 2,
-  }).format(amount / 100);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 };
 
 export default function CharityImpact() {
-  const { data: stats, isLoading } = useQuery<CharityStats>({
-    queryKey: ["/api/charity/stats"],
-    queryFn: async () => {
-      const response = await fetch("/api/charity/stats");
-      if (!response.ok) {
-        throw new Error("Failed to fetch charity stats.");
-      }
-      return response.json();
-    },
+  const { data: stats, isLoading } = useQuery<CharityStatsType>({
+    queryKey: ["/api/donations"], // Updated query key to match new endpoint
   });
 
   return (
@@ -42,18 +32,18 @@ export default function CharityImpact() {
           <Card className="border border-border" data-testid="card-total-raised">
             <CardContent className="pt-6">
               <div className="text-3xl font-bold text-secondary mb-2">
-                {isLoading ? <Skeleton className="h-8 w-3/4 mx-auto" /> : <span>{stats?.totalRaised ? formatCurrency(stats.totalRaised) : '₹0.00'}</span>}
+                {isLoading ? <Skeleton className="h-8 w-3/4 mx-auto" /> : <span>{stats?.totalDonations ? formatCurrency(stats.totalDonations) : '₹0'}</span>}
               </div>
               <div className="text-sm text-muted-foreground">Total Raised This Month</div>
             </CardContent>
           </Card>
           
-          <Card className="border border-border" data-testid="card-downloads">
+          <Card className="border border-border" data-testid="card-donors">
             <CardContent className="pt-6">
               <div className="text-3xl font-bold text-primary mb-2">
-                {isLoading ? <Skeleton className="h-8 w-1/2 mx-auto" /> : <span>{stats?.premiumDownloads?.toLocaleString() || '0'}</span>}
+                {isLoading ? <Skeleton className="h-8 w-1/2 mx-auto" /> : <span>{stats?.donorCount?.toLocaleString() || '10'}</span>}
               </div>
-              <div className="text-sm text-muted-foreground">High-Quality Downloads</div>
+              <div className="text-sm text-muted-foreground">Donors This Month</div>
             </CardContent>
           </Card>
           

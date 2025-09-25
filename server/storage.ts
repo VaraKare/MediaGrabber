@@ -1,5 +1,6 @@
 import { type CharityStats as CharityStatsType, type InsertCharityStats as InsertCharityStatsType } from "@shared/schema";
 import { DbStorage } from "./DbStorage";
+import { InMemoryStorage } from "./InMemoryStorage";
 
 export type CharityStats = CharityStatsType;
 export type InsertCharityStats = InsertCharityStatsType;
@@ -11,4 +12,4 @@ export interface IStorage {
   incrementPremiumDownloads(): Promise<void>;
 }
 
-export const storage = new DbStorage();
+export const storage: IStorage = process.env.DATABASE_URL ? new DbStorage() : new InMemoryStorage();

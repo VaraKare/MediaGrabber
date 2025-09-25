@@ -2,7 +2,7 @@
 FROM node:22-alpine AS builder
 
 # Install Python and pip for yt-dlp
-RUN apk add --no-cache python3 py3-pip
+RUN apk add --no-cache python3 py3-pip ffmpeg
 RUN pip install --break-system-packages yt-dlp
 
 # Set working directory
@@ -32,12 +32,12 @@ RUN npm run build
 FROM node:22-alpine AS runtime
 
 # Install curl for healthcheck, and Python/pip for yt-dlp
-RUN apk add --no-cache curl python3 py3-pip
+
+RUN apk add --no-cache curl python3 py3-pip ffmpeg
 RUN pip install --break-system-packages yt-dlp
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S mediahub -u 1001
+RUN addgroup -g 1001 -S nodejs && adduser -S mediahub -u 1001
 
 # Set working directory
 WORKDIR /app

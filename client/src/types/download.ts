@@ -16,8 +16,9 @@ export interface DownloadProgress {
 }
 
 export interface CharityStats {
-  totalRaised: number;
-  highQualityDownloads: number;
+  totalDonations: number;
+  highQualityDownloads?: number;
+  donorCount?: number;
   beneficiaries: number;
 }
 
