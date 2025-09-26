@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,6 @@ import GoogleAd from "@/components/google-ad";
 import { DownloadOptions } from "./download-options";
 import type { Resolution, VideoInfo } from "@/types/download";
 
-
-
 export default function DownloadInterface() {
   const [url, setUrl] = useState('');
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
@@ -19,8 +17,9 @@ export default function DownloadInterface() {
   const [bitrate, setBitrate] = useState('320kbps');
   const [showAd, setShowAd] = useState(false);
   const [adDuration, setAdDuration] = useState(15);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const { toast } = useToast();
+  const downloadTriggeredRef = useRef(false);
 
   const { isFetching, refetch, isError, error } = useQuery({
     queryKey: ["fetch-info", url],
@@ -32,7 +31,6 @@ export default function DownloadInterface() {
       }
       const data = await response.json();
       setVideoInfo(data);
-      // Default to highest available resolution
       if (data.formats) {
         const mp4Format = data.formats.find((f: any) => f.format === 'mp4');
         if (mp4Format && mp4Format.resolutions?.length > 0) {
@@ -45,11 +43,10 @@ export default function DownloadInterface() {
       }
       return data;
     },
-    enabled: false, // We will trigger this manually
+    enabled: false,
     retry: false,
   });
 
-  // Handle fetch errors using useEffect
   useEffect(() => {
     if (isError && error) {
       toast({ title: "Error Fetching Info", description: error.message, variant: "destructive" });
@@ -65,8 +62,8 @@ export default function DownloadInterface() {
     try {
       const text = await navigator.clipboard.readText();
       handleUrlChange(text);
-    } catch (error) {
-      console.error('Failed to read clipboard contents: ', error);
+    } catch (err) {
+      console.error('Failed to read clipboard contents: ', err);
       toast({ title: "Paste Failed", description: "Could not read from clipboard.", variant: "destructive" });
     }
   };
@@ -80,48 +77,58 @@ export default function DownloadInterface() {
   };
 
   const startDownload = async () => {
-    setIsDownloading(true);
-    toast({ title: "Download Starting", description: "Your file will begin downloading shortly." });
+    if (downloadTriggeredRef.current) return;
+    downloadTriggeredRef.current = true;
+    setIsPreparing(true);
+    toast({ title: "Preparing Download", description: "Your file is being prepared on the server." });
+  
     try {
-      const response = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, format, quality: format === 'mp4' ? resolution : bitrate }),
+      const params = new URLSearchParams({
+        url: url,
+        format: format,
+        quality: format === 'mp4' ? resolution : bitrate,
       });
-
+      const downloadUrl = `/api/download?${params.toString()}`;
+      
+      const response = await fetch(downloadUrl);
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Download failed. Please try again.');
       }
-
+  
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const objectUrl = window.URL.createObjectURL(blob);
+      
       const a = document.createElement('a');
-      a.href = downloadUrl;
+      a.href = objectUrl;
       a.download = `${videoInfo?.title || 'download'}.${format}`;
       document.body.appendChild(a);
       a.click();
+      
+      // Clean up the object URL and the link
+      window.URL.revokeObjectURL(objectUrl);
       a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-      toast({ title: "Download Complete!", description: "Check your downloads folder.", variant: "default" });
-
-    } catch (error: any) {
-      toast({ title: "Download Error", description: error.message, variant: "destructive" });
+      
+      toast({ title: "Download Started!", description: "Check your browser's download manager.", variant: "default" });
+  
+    } catch (err: any) {
+      toast({ title: "Download Error", description: err.message, variant: "destructive" });
     } finally {
-      setIsDownloading(false);
+      setIsPreparing(false);
+      downloadTriggeredRef.current = false;
     }
   };
-
+  
   const handleDownloadClick = () => {
     const qualityValue = parseInt(resolution.replace('p', ''));
     
     if (format === 'mp4' && qualityValue > 480) {
       setAdDuration(30);
-      setShowAd(true);
     } else {
       setAdDuration(15);
-      setShowAd(true);
     }
+    setShowAd(true);
   };
 
   const handleAdComplete = () => {
@@ -129,7 +136,6 @@ export default function DownloadInterface() {
     
     const qualityValue = parseInt(resolution.replace('p', ''));
     if (format === 'mp4' && qualityValue > 480) {
-        // Only record an ad view for premium downloads that contribute to charity
         fetch('/api/record-ad-view', { method: 'POST' });
     }
 
@@ -183,11 +189,21 @@ export default function DownloadInterface() {
                 />
 
                 <Button 
-                  className="w-full py-4 text-lg"
+                  className="w-full py-4 text-lg flex items-center justify-center gap-2"
                   onClick={handleDownloadClick}
-                  disabled={isDownloading || showAd}
+                  disabled={isPreparing || showAd}
                 >
-                  {isDownloading ? 'Preparing...' : `Download ${format.toUpperCase()}`}
+                  {isPreparing ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Preparing Download...
+                    </>
+                  ) : (
+                    `Download ${format.toUpperCase()}`
+                  )}
                 </Button>
               </div>
             )}
@@ -208,3 +224,5 @@ export default function DownloadInterface() {
   );
 }
 
+
+// Note: The actual download is handled by the browser via a direct link to the /api/download endpoint.

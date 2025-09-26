@@ -18,12 +18,11 @@ export default function Home() {
             Download from <span className="bg-gradient-text">Anywhere</span>
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Free downloads from YouTube, Instagram, and Twitter. Premium quality with minimal ads. 
-            Every download contributes to charity.
+            Free downloads from YouTube, Instagram, Twitter, and more. Every download contributes to charity.
           </p>
           
           {/* Platform Support Icons */}
-          <div className="flex justify-center space-x-8 mb-12" data-testid="platform-icons">
+          <div className="flex justify-center flex-wrap gap-4 sm:gap-8 mb-12" data-testid="platform-icons">
             <div className="flex flex-col items-center">
               <div className="bg-red-500 p-3 rounded-full mb-2">
                 <i className="fab fa-youtube text-white text-xl"></i>
@@ -37,24 +36,28 @@ export default function Home() {
               <span className="text-sm text-muted-foreground">Instagram</span>
             </div>
             <div className="flex flex-col items-center">
-              <div className="bg-blue-500 p-3 rounded-full mb-2">
+              <div className="bg-black p-3 rounded-full mb-2">
                 <i className="fab fa-twitter text-white text-xl"></i>
               </div>
-              <span className="text-sm text-muted-foreground">Twitter</span>
+              <span className="text-sm text-muted-foreground">Twitter/X</span>
             </div>
-            <div className="flex flex-col items-center opacity-50">
-              <div className="bg-red-700 p-3 rounded-full mb-2">
-                <i className="fab fa-pinterest text-white text-xl"></i>
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-600 p-3 rounded-full mb-2">
+                <i className="fab fa-facebook text-white text-xl"></i>
               </div>
-              <span className="text-sm text-muted-foreground">Pinterest</span>
-              <span className="text-xs text-accent-foreground">(Coming Soon)</span>
+              <span className="text-sm text-muted-foreground">Facebook</span>
             </div>
-            <div className="flex flex-col items-center opacity-50">
+             <div className="flex flex-col items-center">
               <div className="bg-black p-3 rounded-full mb-2">
                 <i className="fab fa-tiktok text-white text-xl"></i>
               </div>
               <span className="text-sm text-muted-foreground">TikTok</span>
-              <span className="text-xs text-accent-foreground">(Coming Soon)</span>
+            </div>
+             <div className="flex flex-col items-center">
+              <div className="bg-gray-800 p-3 rounded-full mb-2">
+                <i className="fas fa-video text-white text-xl"></i>
+              </div>
+              <span className="text-sm text-muted-foreground">Dailymotion</span>
             </div>
           </div>
         </div>
@@ -69,3 +72,4 @@ export default function Home() {
     </div>
   );
 }
+

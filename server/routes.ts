@@ -121,18 +121,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/download", async (req, res) => {
+  // Changed from app.post to app.get for direct browser downloads
+  app.get("/api/download", async (req, res) => {
     log('Download request received.');
     // Create a temporary directory instead of a file
     const tmpDir = tmp.dirSync({ unsafeCleanup: true });
     log(`Created temporary directory: ${tmpDir.name}`);
 
     try {
+      // Switched from req.body to req.query
       const { url, format, quality } = z.object({
         url: z.string().url(),
         format: z.enum(['mp3', 'mp4']),
         quality: z.string(),
-      }).parse(req.body);
+      }).parse(req.query);
       log(`Request validated: url=${url}, format=${format}, quality=${quality}`);
   
       const videoInfo: any = await getFormats(url);
