@@ -18,10 +18,11 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Platform</h4>
             <ul className="space-y-2 text-sm text-primary-foreground/70">
-              <li><a href="#" className="hover:text-primary-foreground transition-colors" data-testid="link-youtube">YouTube Downloads</a></li>
-              <li><a href="#" className="hover:text-primary-foreground transition-colors" data-testid="link-instagram">Instagram Downloads</a></li>
-              <li><a href="#" className="hover:text-primary-foreground transition-colors" data-testid="link-twitter">Twitter Downloads</a></li>
-              <li><a href="#" className="hover:text-primary-foreground transition-colors" data-testid="link-premium">Premium Features</a></li>
+              <li><a href="/youtube-downloader" className="hover:text-primary-foreground transition-colors" data-testid="link-youtube">YouTube Downloader</a></li>
+              <li><a href="/instagram-downloader" className="hover:text-primary-foreground transition-colors" data-testid="link-instagram">Instagram Downloader</a></li>
+              <li><a href="/twitter-downloader" className="hover:text-primary-foreground transition-colors" data-testid="link-twitter">Twitter Downloader</a></li>
+              <li><a href="/tiktok-downloader" className="hover:text-primary-foreground transition-colors" data-testid="link-tiktok">TikTok Downloader</a></li>
+              <li><a href="/facebook-downloader" className="hover:text-primary-foreground transition-colors" data-testid="link-facebook">Facebook Downloader</a></li>
             </ul>
           </div>
           

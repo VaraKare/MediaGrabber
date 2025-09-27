@@ -6,16 +6,23 @@ import { serveStatic, log } from "./utils";
 
 const app = express();
 
+
+// A whitelist of allowed origins.
+const allowedOrigins = [
+    // Regex to match Vercel deployment URLs (including preview branches)
+    /^https:\/\/downloadmedia-.*\.vercel\.app$/,
+    // Your Render backend URL
+    'https://mediagrabber-elbv.onrender.com',
+    // Local development URLs
+    'http://localhost:5001',
+    'http://localhost:5173'
+];
 app.use(cors({
-    origin: function (origin, callback) {
-        const allowedOrigins = [
-            /^https:\/\/downloadmedia-.*\.vercel\.app$/,
-            'https://mediagrabber-elbv.onrender.com',
-            'http://localhost:5001',
-            'http://localhost:5173'
-        ];
-        if (!origin || allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
-            log(`CORS: Allowed origin: ${origin}`);
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
             callback(null, true);
         } else {
             log(`CORS: Disallowed origin: ${origin}`);
@@ -24,7 +31,7 @@ app.use(cors({
     },
     credentials: true
 }));
-log(`CORS enabled for specific origins.`);
+log(`CORS configured for specific origins.`);
 
 app.use((_req, res, next) => {
     res.on('finish', () => {
