@@ -5,8 +5,12 @@ export async function getFormats(url: string): Promise<any> {
     const metadata = await youtubeDl(url, {
       dumpSingleJson: true,
       noWarnings: true,
-      callHome: false,
+      callHome: false, // Deprecated, but good to keep explicitly for older versions
       noCheckCertificates: true,
+      // Add a User-Agent to mimic a browser, which helps bypass bot detection
+      // It's important to use a realistic user agent string.
+      // You might need to update this periodically if YouTube changes its detection.
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     });
     return metadata;
   } catch (error) {
@@ -14,4 +18,3 @@ export async function getFormats(url: string): Promise<any> {
     throw new Error("Failed to fetch formats");
   }
 }
-

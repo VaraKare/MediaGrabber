@@ -108,13 +108,10 @@ export default function DownloadInterface() {
     // This will trigger the browser's download manager
     window.location.href = `/api/download?${params.toString()}`;
 
-    // After triggering, we can reset the state after a short delay
-    // The browser handles the download from here.
-    setTimeout(() => {
-        setIsPreparing(false);
-        setUrl('');
-        setVideoInfo(null);
-    }, 3000); 
+    // Reset the state immediately, as the browser will handle the download from here.
+    setIsPreparing(false);
+    setUrl('');
+    setVideoInfo(null);
   }, [videoInfo, debouncedUrl, format, resolution, bitrate, toast]);
   
   const handleDownloadClick = () => {

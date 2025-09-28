@@ -1,4 +1,3 @@
-// PRODUCTION-ONLY server entry point
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
@@ -9,8 +8,18 @@ const app = express();
 // CORS Middleware
 // Set a default list of allowed origins that includes your specific Vercel URL.
 // This can be overridden by the CORS_ALLOWED_ORIGINS environment variable on Render if needed.
-const allowedOriginsStr = process.env.CORS_ALLOWED_ORIGINS || `https://downloadmedia-umber.vercel.app`||`http://localhost:5001`;
-const allowedOrigins = allowedOriginsStr.split(',').map(origin => origin.trim());
+const defaultAllowedOrigins = [
+  "https://downloadmedia-umber.vercel.app",
+  "http://localhost:5001",
+  "http://localhost:5173", // Added for local Vite dev server
+  "https://mediagrabber-elbv.onrender.com" // Explicitly add Render backend URL
+];
+
+const allowedOriginsStr = process.env.CORS_ALLOWED_ORIGINS;
+const allowedOrigins = allowedOriginsStr
+  ? allowedOriginsStr.split(',').map(origin => origin.trim())
+  : defaultAllowedOrigins;
+
 
 app.use(cors({ 
     origin: (origin, callback) => {
