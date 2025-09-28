@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,23 @@ import GoogleAd from "@/components/google-ad";
 import { DownloadOptions } from "./download-options";
 import type { Resolution, VideoInfo } from "@/types/download";
 
+// A custom hook for debouncing
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+};
+
 export default function DownloadInterface() {
   const [url, setUrl] = useState('');
+  const debouncedUrl = useDebounce(url, 500); // 500ms delay
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [format, setFormat] = useState<'mp3' | 'mp4'>('mp4');
   const [resolution, setResolution] = useState<Resolution>('1080p');
@@ -19,12 +34,13 @@ export default function DownloadInterface() {
   const [adDuration, setAdDuration] = useState(15);
   const [isPreparing, setIsPreparing] = useState(false);
   const { toast } = useToast();
-  const downloadTriggeredRef = useRef(false);
 
   const { isFetching, refetch, isError, error } = useQuery({
-    queryKey: ["fetch-info", url],
+    queryKey: ["fetch-info", debouncedUrl],
     queryFn: async () => {
-      const response = await fetch(`/api/fetch-info?url=${encodeURIComponent(url)}`);
+      if (!isValidUrl(debouncedUrl)) return null;
+
+      const response = await fetch(`/api/fetch-info?url=${encodeURIComponent(debouncedUrl)}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to fetch video information.');
@@ -43,9 +59,18 @@ export default function DownloadInterface() {
       }
       return data;
     },
-    enabled: false,
+    enabled: false, // We will trigger it manually or via debouncedUrl change
     retry: false,
   });
+  
+  // Effect for auto-fetching when debounced URL changes
+  useEffect(() => {
+    if (isValidUrl(debouncedUrl)) {
+      refetch();
+    } else {
+      setVideoInfo(null); // Clear old info if URL is cleared or invalid
+    }
+  }, [debouncedUrl, refetch]);
 
   useEffect(() => {
     if (isError && error) {
@@ -55,7 +80,6 @@ export default function DownloadInterface() {
 
   const handleUrlChange = (value: string) => {
     setUrl(value);
-    setVideoInfo(null);
   };
 
   const handlePaste = async () => {
@@ -68,57 +92,30 @@ export default function DownloadInterface() {
     }
   };
 
-  const handleFetchInfo = () => {
-    if (isValidUrl(url)) {
-      refetch();
-    } else {
-      toast({ title: "Invalid URL", description: "Please enter a valid URL.", variant: "destructive" });
-    }
-  };
+  const startDownload = useCallback(() => {
+    if (!videoInfo) return;
 
-  const startDownload = async () => {
-    if (downloadTriggeredRef.current) return;
-    downloadTriggeredRef.current = true;
     setIsPreparing(true);
-    toast({ title: "Preparing Download", description: "Your file is being prepared on the server." });
-  
-    try {
-      const params = new URLSearchParams({
-        url: url,
+    toast({ title: "Preparing Download", description: "Your download will begin shortly..." });
+
+    const params = new URLSearchParams({
+        url: debouncedUrl,
         format: format,
         quality: format === 'mp4' ? resolution : bitrate,
-      });
-      const downloadUrl = `/api/download?${params.toString()}`;
-      
-      const response = await fetch(downloadUrl);
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Download failed. Please try again.');
-      }
-  
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = `${videoInfo?.title || 'download'}.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up the object URL and the link
-      window.URL.revokeObjectURL(objectUrl);
-      a.remove();
-      
-      toast({ title: "Download Started!", description: "Check your browser's download manager.", variant: "default" });
-  
-    } catch (err: any) {
-      toast({ title: "Download Error", description: err.message, variant: "destructive" });
-    } finally {
-      setIsPreparing(false);
-      downloadTriggeredRef.current = false;
-    }
-  };
+        title: videoInfo.title
+    });
+    
+    // This will trigger the browser's download manager
+    window.location.href = `/api/download?${params.toString()}`;
+
+    // After triggering, we can reset the state after a short delay
+    // The browser handles the download from here.
+    setTimeout(() => {
+        setIsPreparing(false);
+        setUrl('');
+        setVideoInfo(null);
+    }, 3000); 
+  }, [videoInfo, debouncedUrl, format, resolution, bitrate, toast]);
   
   const handleDownloadClick = () => {
     const qualityValue = parseInt(resolution.replace('p', ''));
@@ -131,7 +128,7 @@ export default function DownloadInterface() {
     setShowAd(true);
   };
 
-  const handleAdComplete = () => {
+  const handleAdComplete = useCallback(() => {
     setShowAd(false);
     
     const qualityValue = parseInt(resolution.replace('p', ''));
@@ -140,11 +137,11 @@ export default function DownloadInterface() {
     }
 
     startDownload();
-  };
-
+  }, [startDownload, format, resolution]);
+  
   return (
     <section className="py-12 bg-muted/30">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <Card className="shadow-lg border border-border">
           <CardHeader>
             <CardTitle className="text-2xl">Download Your Media</CardTitle>
@@ -154,20 +151,23 @@ export default function DownloadInterface() {
             <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
               <Input
                 type="url"
-                placeholder="https://youtube.com/watch?v=..."
+                placeholder="https://... (paste your link here)"
                 value={url}
                 onChange={(e) => handleUrlChange(e.target.value)}
                 className="flex-grow"
+                disabled={isPreparing}
               />
-              <div className="flex space-x-2 w-full sm:w-auto">
-                <Button onClick={handlePaste} variant="outline" className="flex-1 sm:flex-initial">Paste</Button>
-                <Button onClick={handleFetchInfo} disabled={isFetching || !url} className="flex-1 sm:flex-initial">
-                  {isFetching ? 'Fetching...' : 'Fetch Info'}
-                </Button>
-              </div>
+              <Button onClick={handlePaste} variant="outline" className="w-full sm:w-auto" disabled={isPreparing}>Paste</Button>
             </div>
 
-            {videoInfo && (
+            {isFetching && (
+              <div className="text-center p-4 text-muted-foreground">
+                <i className="fas fa-spinner fa-spin mr-2"></i>
+                Fetching video details...
+              </div>
+            )}
+
+            {videoInfo && !isFetching && (
               <div className="space-y-4 animate-in fade-in-50">
                 <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 p-4 border rounded-md">
                   <img src={videoInfo.thumbnail} alt={videoInfo.title} className="w-48 h-auto object-cover rounded-md" />
@@ -191,23 +191,15 @@ export default function DownloadInterface() {
                 <Button 
                   className="w-full py-4 text-lg flex items-center justify-center gap-2"
                   onClick={handleDownloadClick}
-                  disabled={isPreparing || showAd}
+                  disabled={showAd || isPreparing}
                 >
-                  {isPreparing ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Preparing Download...
-                    </>
-                  ) : (
-                    `Download ${format.toUpperCase()}`
-                  )}
+                  {isPreparing 
+                    ? 'Starting...' 
+                    : `Download ${format.toUpperCase()}`
+                  }
                 </Button>
               </div>
             )}
-
           </CardContent>
         </Card>
       </div>
@@ -224,5 +216,3 @@ export default function DownloadInterface() {
   );
 }
 
-
-// Note: The actual download is handled by the browser via a direct link to the /api/download endpoint.
