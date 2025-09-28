@@ -12,14 +12,11 @@ const allowedOrigins = [
     /^https:\/\/downloadmedia-.*\.vercel\.app$/, // Regex to match all Vercel preview deployments
     'http://localhost:5001',
 ];
-
-// If a CORS_ALLOWED_ORIGINS env var is provided on Render, it will override the list above.
 const corsOriginsFromEnv = process.env.CORS_ALLOWED_ORIGINS?.split(',').map(o => o.trim());
 
 app.use(cors({ 
     origin: (origin, callback) => {
         const origins = corsOriginsFromEnv || allowedOrigins;
-        // Allow requests with no origin (like Postman/curl) or from the allowed list.
         if (!origin || origins.some(o => (typeof o === 'string' ? o === origin : o.test(origin)))) {
             callback(null, true);
         } else {
@@ -35,9 +32,6 @@ log(`CORS configured.`);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Note: The request logging middleware from index.ts is omitted for brevity in production,
-// but could be included if desired.
-
 (async () => {
   const server = await registerRoutes(app);
 
@@ -45,7 +39,6 @@ app.use(express.urlencoded({ extended: false }));
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
-    // In production, you might not want to throw the error further
   });
 
   const isApiOnly = process.env.API_ONLY_MODE === 'true';
@@ -56,16 +49,25 @@ app.use(express.urlencoded({ extended: false }));
           res.json({ message: "MediaHub API is running" });
       });
   } else {
-    // In production, we always serve the static files.
     serveStatic(app);
   }
 
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  const listener = server.listen({ port, host: "0.0.0.0" }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Graceful shutdown
+  const signals = ['SIGINT', 'SIGTERM'];
+  signals.forEach((signal) => {
+    process.on(signal, () => {
+      log(`Received ${signal}, shutting down gracefully.`);
+      listener.close(() => {
+        log('Server closed.');
+        process.exit(0);
+      });
+    });
+  });
+
 })();
+

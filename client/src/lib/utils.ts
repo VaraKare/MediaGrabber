@@ -19,10 +19,8 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // If the url is already a full URL, use it as is. Otherwise, construct the full URL.
-  const fullUrl = url.startsWith("http") 
-    ? url 
-    : `${apiBaseUrl}/${url}`.replace(/([^:]\/)\/+/g, "$1"); // This cleans up any double slashes
+  // Construct the full URL safely, handling slashes correctly.
+  const fullUrl = new URL(url, apiBaseUrl).toString();
 
   const res = await fetch(fullUrl, {
     method,
@@ -33,4 +31,3 @@ export async function apiRequest(
   await throwIfResNotOk(res);
   return res;
 }
-

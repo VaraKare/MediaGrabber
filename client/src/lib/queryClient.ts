@@ -5,12 +5,11 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "";
 export const getQueryFn: <T>(options?: { on401?: "returnNull" | "throw" }) => QueryFunction<T> =
   ({ on401 = "throw" } = {}) =>
   async ({ queryKey }) => {
-    const path = queryKey.join("/") as string;
+    // Re-join queryKey to construct the path, removing any empty segments
+    const path = queryKey.filter(Boolean).join("/");
     
-    // If the path is already a full URL, use it as is. Otherwise, construct the full URL.
-    const fullUrl = path.startsWith("http")
-      ? path
-      : `${apiBaseUrl}/${path}`.replace(/([^:]\/)\/+/g, "$1"); // This cleans up any double slashes
+    // Construct the full URL safely
+    const fullUrl = new URL(path, apiBaseUrl).toString();
 
     const res = await fetch(fullUrl);
     if (on401 === "returnNull" && res.status === 401) return null as unknown ;
@@ -18,7 +17,7 @@ export const getQueryFn: <T>(options?: { on401?: "returnNull" | "throw" }) => Qu
       const text = (await res.text()) || res.statusText;
       throw new Error(`${res.status}: ${text}`);
     }
-    return (await res.json());
+    return (await res.json()) ;
   };
 
 export const queryClient = new QueryClient({

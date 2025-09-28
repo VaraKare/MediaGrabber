@@ -79,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/fetch-info", async (req, res) => {
+app.get("/api/fetch-info", async (req, res) => {
     try {
       const url = z.string().url().parse(req.query.url);
       const platform = getUrlPlatform(url);
@@ -123,67 +123,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // --- REVISED DOWNLOAD ENDPOINT FOR DIRECT STREAMING ---
   app.get("/api/download", async (req, res) => {
-    log('Download stream request received.');
-    
+    log('Download request received.');
+    const tmpDir = tmp.dirSync({ unsafeCleanup: true });
+    log(`Created temporary directory: ${tmpDir.name}`);
+
     try {
-      const { url, format, quality, title } = z.object({
+      const { url, format, quality } = z.object({
         url: z.string().url(),
         format: z.enum(['mp3', 'mp4']),
         quality: z.string(),
-        title: z.string(),
       }).parse(req.query);
       log(`Request validated: url=${url}, format=${format}, quality=${quality}`);
   
-      const safeTitle = (title || 'download').replace(/[^a-z0-9-_.]/gi, '_');
+      const videoInfo: any = await getFormats(url);
+      const safeTitle = (videoInfo.title || 'download').replace(/[^a-z0-9-_.]/gi, '_');
       const finalFilename = `${safeTitle}.${format}`;
-      
-      // Set headers to tell the browser to treat this as a download
-      res.setHeader('Content-Disposition', `attachment; filename="${finalFilename}"`);
-      res.setHeader('Content-Type', format === 'mp4' ? 'video/mp4' : 'audio/mpeg');
+      log(`Video info fetched. Filename: ${finalFilename}`);
 
+      const outputTemplate = path.join(tmpDir.name, `%(title)s.%(ext)s`);
+  
       const options: any = {
-        output: '-', // This is crucial: it tells yt-dlp to pipe the output to stdout
+        output: outputTemplate,
+        progress: true,
       };
 
       if (format === 'mp4') {
         const requestedHeight = parseInt(quality);
-        log(`MP4 stream requested for height <= ${requestedHeight}p`);
-        // Let yt-dlp handle finding the best video and audio and merging them into a single stream.
+        log(`MP4 download requested for height <= ${requestedHeight}p`);
         options.format = `bestvideo[height<=${requestedHeight}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${requestedHeight}][ext=mp4]/best`;
+        options['merge-output-format'] = 'mp4';
+
       } else { // mp3
-        log(`MP3 stream requested.`);
+        log(`MP3 download requested.`);
         options.extractAudio = true;
         options.audioFormat = 'mp3';
       }
 
       log(`Spawning yt-dlp with options: ${JSON.stringify(options)}`);
+      
       const downloadProcess = youtubeDl.exec(url, options);
 
-      // Pipe the raw video/audio data from yt-dlp directly to the user's response.
-      if (downloadProcess.stdout) {
-        downloadProcess.stdout.pipe(res);
-      } else {
-          throw new Error("Could not create download stream from yt-dlp.");
-      }
-      
-      // Optional: log any errors from yt-dlp for debugging
-      if (downloadProcess.stderr) {
-        downloadProcess.stderr.on('data', (data: Buffer) => {
-          log(`[yt-dlp stderr]: ${data.toString()}`);
+      let stderrOutput = '';
+      if(downloadProcess.stderr) {
+        downloadProcess.stderr.on('data', (data) => {
+          stderrOutput += data.toString();
         });
       }
+      
+      await downloadProcess;
+      log(`yt-dlp process finished.`);
 
-      // When the user's request is closed (e.g., they cancel the download), kill the yt-dlp process.
-      req.on('close', () => {
-        log('Client aborted the download. Killing yt-dlp process.');
-        downloadProcess.kill();
-      });
-  
-    } catch (error) {
-      log(`ERROR in /api/download: ${error}`);
-      if (!res.headersSent) {
-          res.status(500).json({ error: "An error occurred while preparing your download." });
+      const filesInDir = fs.readdirSync(tmpDir.name);
+      log(`Files in temp directory: [${filesInDir.join(', ')}]`);
+
+      if (filesInDir.length === 0) {
+        throw new Error(`No file was downloaded by yt-dlp. Stderr: ${stderrOutput}`);
       }
+
+      const downloadedFile = filesInDir[0];
+      const filePath = path.join(tmpDir.name, downloadedFile);
+      
+      const stats = fs.statSync(filePath);
+      if (stats.size === 0) {
+        throw new Error('Downloaded file is empty. yt-dlp may have failed silently.');
+      }
+      log(`Temporary file validation passed. Path: ${filePath}, Size: ${stats.size} bytes.`);
+      
+      res.header('Content-Disposition', `attachment; filename="${finalFilename}"`);
+      res.header('Content-Length', stats.size.toString());
+      log('Response headers set. Creating read stream from temp file.');
+
+      const readStream = fs.createReadStream(filePath);
+      
+      readStream.on('close', () => {
+        log('Stream finished. Cleaning up temporary directory.');
+        tmpDir.removeCallback();
+      });
+
+      readStream.on('error', (err) => {
+        log(`ERROR - Could not stream temp file to response: ${err.message}`);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to stream file.' });
+        }
+        tmpDir.removeCallback();
+      });
+
+      readStream.pipe(res);
+  
+    } catch (error: any) {
+      log(`FATAL ERROR in /api/download: ${error.message}`);
+      if (!res.headersSent) {
+          res.status(500).json({ error: error.message || "A critical error occurred while processing your download request." });
+      }
+      log('Cleaning up temporary directory due to error.');
+      tmpDir.removeCallback();
     }
   });
 
