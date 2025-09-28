@@ -7,14 +7,25 @@ import { serveStatic, log } from "./utils";
 const app = express();
 
 // CORS Middleware
-const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',').map(origin => origin.trim());
-if (allowedOrigins && allowedOrigins.length > 0) {
-    app.use(cors({ 
-        origin: allowedOrigins,
-        credentials: true
-    }));
-    log(`CORS enabled for: ${allowedOrigins.join(", ")}`);
-}
+// Set a default list of allowed origins that includes your specific Vercel URL.
+// This can be overridden by the CORS_ALLOWED_ORIGINS environment variable on Render if needed.
+const allowedOriginsStr = process.env.CORS_ALLOWED_ORIGINS || `https://downloadmedia-umber.vercel.app`||`http://localhost:5001`;
+const allowedOrigins = allowedOriginsStr.split(',').map(origin => origin.trim());
+
+app.use(cors({ 
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like server-to-server) or from the allowed list.
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            log(`CORS: Disallowed origin in production: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
+log(`CORS enabled for: ${allowedOrigins.join(", ")}`);
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
