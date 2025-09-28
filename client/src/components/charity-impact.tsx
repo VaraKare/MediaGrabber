@@ -17,7 +17,8 @@ const formatCurrency = (amount: number) => {
 
 export default function CharityImpact() {
   const { data: stats, isLoading } = useQuery<CharityStatsType>({
-    queryKey: ["/api/donations"], // Updated query key to match new endpoint
+    // CORRECTED: Use a clean path for the queryKey
+    queryKey: ["api/donations"], 
   });
 
   return (

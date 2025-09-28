@@ -1,26 +1,33 @@
-// PRODUCTION-ONLY server entry point
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./utils";
+import { setupVite } from "./vite";
 
 const app = express();
 
-// CORS Middleware
-const allowedOrigins = [
-    'https://downloadmedia-umber.vercel.app', // Your main Vercel project URL
-    /^https:\/\/downloadmedia-.*\.vercel\.app$/, // Regex to match all Vercel preview deployments
-    'http://localhost:5001',
-];
-const corsOriginsFromEnv = process.env.CORS_ALLOWED_ORIGINS?.split(',').map(o => o.trim());
 
-app.use(cors({ 
+// A whitelist of allowed origins.
+const allowedOrigins = [
+    // Regex to match Vercel deployment URLs (including preview branches)
+    /^https:\/\/downloadmedia-.*\.vercel\.app$/,
+    // Your specific production URL
+    'https://downloadmedia-umber.vercel.app',
+    // Your Render backend URL
+    'https://mediagrabber-elbv.onrender.com',
+    // Local development URLs
+    'http://localhost:5001',
+    'http://localhost:5173'
+];
+app.use(cors({
     origin: (origin, callback) => {
-        const origins = corsOriginsFromEnv || allowedOrigins;
-        if (!origin || origins.some(o => (typeof o === 'string' ? o === origin : o.test(origin)))) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
             callback(null, true);
         } else {
-            log(`CORS: Disallowed origin in production: ${origin}`);
+            log(`CORS: Disallowed origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
@@ -28,9 +35,20 @@ app.use(cors({
 }));
 log(`CORS configured.`);
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// This request logging middleware can stay for both dev and prod
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (req.path.startsWith("/api")) {
+      log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
+    }
+  });
+  next();
+});
 
 (async () => {
   const server = await registerRoutes(app);
@@ -41,23 +59,21 @@ app.use(express.urlencoded({ extended: false }));
     res.status(status).json({ message });
   });
 
-  const isApiOnly = process.env.API_ONLY_MODE === 'true';
-
-  if (isApiOnly) {
-      log("Running in API-only mode. Frontend will not be served.");
-      app.get("/", (_req, res) => {
-          res.json({ message: "MediaHub API is running" });
-      });
+  // --- CRITICAL CHANGE FOR LOCAL VS PROD ---
+  if (process.env.NODE_ENV === "development") {
+    // In development, Vite handles everything.
+    await setupVite(app, server);
   } else {
+    // In production, we serve the static build from 'dist/public'
     serveStatic(app);
   }
 
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = parseInt(process.env.PORT || '5001', 10);
   const listener = server.listen({ port, host: "0.0.0.0" }, () => {
     log(`serving on port ${port}`);
   });
 
-  // Graceful shutdown
+  // Graceful shutdown logic for Render
   const signals = ['SIGINT', 'SIGTERM'];
   signals.forEach((signal) => {
     process.on(signal, () => {
@@ -68,6 +84,4 @@ app.use(express.urlencoded({ extended: false }));
       });
     });
   });
-
 })();
-

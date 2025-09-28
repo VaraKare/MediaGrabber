@@ -14,7 +14,8 @@ export function log(message: string, source = "express") {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  // CORRECTED: Point to the correct build output directory at the project root
+  const distPath = path.resolve(import.meta.dirname, "..", "dist", "public");
   log(`Serving static files from: ${distPath}`);
 
   if (!fs.existsSync(distPath)) {
