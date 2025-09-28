@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run vercel-build",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD client/ shared/",
-  "outputDirectory": "dist/public"
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://mediagrabber-elbv.onrender.com/api/$1"
+    }
+  ]
 }

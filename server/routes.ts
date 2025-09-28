@@ -128,15 +128,15 @@ app.get("/api/fetch-info", async (req, res) => {
     log(`Created temporary directory: ${tmpDir.name}`);
 
     try {
-      const { url, format, quality } = z.object({
+      const { url, format, quality, title } = z.object({
         url: z.string().url(),
         format: z.enum(['mp3', 'mp4']),
         quality: z.string(),
+        title: z.string().optional(),
       }).parse(req.query);
       log(`Request validated: url=${url}, format=${format}, quality=${quality}`);
   
-      const videoInfo: any = await getFormats(url);
-      const safeTitle = (videoInfo.title || 'download').replace(/[^a-z0-9-_.]/gi, '_');
+      const safeTitle = (title || 'download').replace(/[^a-z0-9-_.]/gi, '_');
       const finalFilename = `${safeTitle}.${format}`;
       log(`Video info fetched. Filename: ${finalFilename}`);
 
@@ -189,8 +189,10 @@ app.get("/api/fetch-info", async (req, res) => {
       }
       log(`Temporary file validation passed. Path: ${filePath}, Size: ${stats.size} bytes.`);
       
-      res.header('Content-Disposition', `attachment; filename="${finalFilename}"`);
-      res.header('Content-Length', stats.size.toString());
+      res.setHeader('Content-Disposition', `attachment; filename="${finalFilename}"`);
+      res.setHeader('Content-Length', stats.size);
+      res.setHeader('Content-Type', format === 'mp4' ? 'video/mp4' : 'audio/mpeg');
+
       log('Response headers set. Creating read stream from temp file.');
 
       const readStream = fs.createReadStream(filePath);
@@ -232,4 +234,3 @@ app.get("/api/fetch-info", async (req, res) => {
 
   return createServer(app);
 }
-

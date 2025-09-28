@@ -215,4 +215,3 @@ export default function DownloadInterface() {
     </section>
   );
 }
-
