@@ -6,14 +6,19 @@ export const getQueryFn: <T>(options?: { on401?: "returnNull" | "throw" }) => Qu
   ({ on401 = "throw" } = {}) =>
   async ({ queryKey }) => {
     const path = queryKey.join("/") as string;
-    const fullUrl = path.startsWith("http") ? path : `${apiBaseUrl}/${path}`.replace(/\/\/+/, "/");
+    
+    // If the path is already a full URL, use it as is. Otherwise, construct the full URL.
+    const fullUrl = path.startsWith("http")
+      ? path
+      : `${apiBaseUrl}/${path}`.replace(/([^:]\/)\/+/g, "$1"); // This cleans up any double slashes
+
     const res = await fetch(fullUrl);
     if (on401 === "returnNull" && res.status === 401) return null as unknown ;
     if (!res.ok) {
       const text = (await res.text()) || res.statusText;
       throw new Error(`${res.status}: ${text}`);
     }
-    return (await res.json()) ;
+    return (await res.json());
   };
 
 export const queryClient = new QueryClient({
