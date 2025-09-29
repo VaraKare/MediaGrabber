@@ -108,7 +108,7 @@ export default function DownloadInterface() {
     // This will trigger the browser's download manager
     window.location.href = `/api/download?${params.toString()}`;
 
-    // Reset the state immediately, as the browser will handle the download from here.
+    // Reset the state immediately, as the browser handles the download from here.
     setIsPreparing(false);
     setUrl('');
     setVideoInfo(null);
