@@ -6,8 +6,7 @@ import { setupVite } from "./vite";
 
 const app = express();
 
-
-// A whitelist of allowed origins.
+// A specific list of allowed origins for development
 const allowedOrigins = [
     // Regex to match Vercel deployment URLs (including preview branches)
     /^https:\/\/downloadmedia-.*\.vercel\.app$/,
@@ -19,26 +18,25 @@ const allowedOrigins = [
     'http://localhost:5001',
     'http://localhost:5173'
 ];
+
 app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
+        // or from our list of allowed origins.
+        if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            log(`CORS: Disallowed origin: ${origin}`);
+            log(`CORS: Disallowed origin in dev: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true
 }));
-log(`CORS configured.`);
+log(`CORS configured for development.`);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// This request logging middleware can stay for both dev and prod
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {
@@ -59,12 +57,9 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
   });
 
-  // --- CRITICAL CHANGE FOR LOCAL VS PROD ---
   if (process.env.NODE_ENV === "development") {
-    // In development, Vite handles everything.
     await setupVite(app, server);
   } else {
-    // In production, we serve the static build from 'dist/public'
     serveStatic(app);
   }
 
@@ -73,7 +68,6 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 
-  // Graceful shutdown logic for Render
   const signals = ['SIGINT', 'SIGTERM'];
   signals.forEach((signal) => {
     process.on(signal, () => {

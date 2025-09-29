@@ -12,7 +12,7 @@ type ApiConfigEntry = {
 };
 
 // This maps each platform to its specific configuration.
-const API_CONFIG: Record<Platform, ApiConfigEntry> = {
+export const API_CONFIG: Record<Platform, ApiConfigEntry> = {
     youtube: {
         host: process.env.YOUTUBE_API_HOST,
         key: process.env.RAPIDAPI_KEY,
