@@ -35,4 +35,7 @@ export interface VideoInfo {
   thumbnail: string;
   platform: string;
   formats: Format[];
+  // Add optional fields for APIs that return direct download URLs
+  primaryDownloadUrl?: string; 
+  audioDownloadUrl?: string;
 }

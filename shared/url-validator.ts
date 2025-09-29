@@ -5,6 +5,11 @@ const FACEBOOK_REGEX = /^(https?:\/\/)?(www\.)?facebook\.com\/(watch\?v=|video\.
 const TIKTOK_REGEX = /^(https?:\/\/)?(www\.)?tiktok\.com\/(@[a-zA-Z0-9_.]+\/video\/|v\/)([0-9]+)(\/.*)?$/;
 const DAILYMOTION_REGEX = /^(https?:\/\/)?(www\.)?dailymotion\.com\/video\/[a-zA-Z0-9]+(\/.*)?$/;
 const PINTEREST_REGEX = /^(https?:\/\/)?(www\.)?pinterest\.com\/(pin|\d+)\/.*$/;
+const SPOTIFY_REGEX = /^(https?:\/\/)?(open\.)?spotify\.com\/(track|album|playlist)\/[a-zA-Z0-9]+(\?.*)?$/;
+const TERABOX_REGEX = /^(https?:\/\/)?(www\.)?terabox\.com\/s\/[a-zA-Z0-9]+(\?.*)?$/;
+
+export type Platform = 'youtube' | 'twitter' | 'instagram' | 'facebook' | 'tiktok' | 'dailymotion' | 'pinterest' | 'spotify' | 'terabox' | 'other';
+
 
 export const isValidUrl = (url: string): boolean => {
     try {
@@ -15,7 +20,7 @@ export const isValidUrl = (url: string): boolean => {
     }
 };
 
-export const getUrlPlatform = (url: string): 'youtube' | 'twitter' | 'instagram' | 'facebook' | 'tiktok' | 'dailymotion' | 'pinterest' | 'other' => {
+export const getUrlPlatform = (url: string): Platform => {
     if (YOUTUBE_REGEX.test(url)) return 'youtube';
     if (TWITTER_REGEX.test(url)) return 'twitter';
     if (INSTAGRAM_REGEX.test(url)) return 'instagram';
@@ -23,6 +28,7 @@ export const getUrlPlatform = (url: string): 'youtube' | 'twitter' | 'instagram'
     if (TIKTOK_REGEX.test(url)) return 'tiktok';
     if (DAILYMOTION_REGEX.test(url)) return 'dailymotion';
     if (PINTEREST_REGEX.test(url)) return 'pinterest';
+    if (SPOTIFY_REGEX.test(url)) return 'spotify';
+    if (TERABOX_REGEX.test(url)) return 'terabox';
     return 'other';
 };
-
