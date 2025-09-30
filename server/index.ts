@@ -1,3 +1,4 @@
+import 'dotenv/config'; // <-- CRITICAL: Load environment variables first
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
@@ -23,7 +24,7 @@ app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
         // or from our list of allowed origins.
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
             callback(null, true);
         } else {
             log(`CORS: Disallowed origin in dev: ${origin}`);
@@ -42,7 +43,7 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (req.path.startsWith("/api")) {
-      log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
+      log(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`, 'Request');
     }
   });
   next();
@@ -65,15 +66,15 @@ app.use((req, res, next) => {
 
   const port = parseInt(process.env.PORT || '5001', 10);
   const listener = server.listen({ port, host: "0.0.0.0" }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on port ${port}`, 'Server');
   });
 
   const signals = ['SIGINT', 'SIGTERM'];
   signals.forEach((signal) => {
     process.on(signal, () => {
-      log(`Received ${signal}, shutting down gracefully.`);
+      log(`Received ${signal}, shutting down gracefully.`, 'Server');
       listener.close(() => {
-        log('Server closed.');
+        log('Server closed.', 'Server');
         process.exit(0);
       });
     });

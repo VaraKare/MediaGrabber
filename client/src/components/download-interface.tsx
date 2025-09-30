@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isValidUrl } from "@shared/url-validator";
+import { isValidUrl, isPlaylistOrAlbum, getUrlPlatform } from "@shared/url-validator";
 import { useToast } from "@/hooks/use-toast";
-import GoogleAd from "@/components/google-ad";
+import  GoogleAd  from "./google-ad";
 import { DownloadOptions } from "./download-options";
 import type { Resolution, VideoInfo } from "@/types/download";
 
@@ -25,7 +25,7 @@ const useDebounce = (value: string, delay: number) => {
 
 export default function DownloadInterface() {
   const [url, setUrl] = useState('');
-  const debouncedUrl = useDebounce(url, 500); // 500ms delay
+  const debouncedUrl = useDebounce(url.trim(), 500);
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
   const [format, setFormat] = useState<'mp3' | 'mp4'>('mp4');
   const [resolution, setResolution] = useState<Resolution>('1080p');
@@ -38,9 +38,17 @@ export default function DownloadInterface() {
   const { isFetching, refetch, isError, error } = useQuery({
     queryKey: ["fetch-info", debouncedUrl],
     queryFn: async () => {
-      if (!isValidUrl(debouncedUrl)) return null;
+      const trimmedUrl = debouncedUrl.trim();
+      if (!isValidUrl(trimmedUrl)) {
+        setVideoInfo(null);
+        return null;
+      }
+      const playlistCheck = isPlaylistOrAlbum(trimmedUrl);
+      if (playlistCheck.isPlaylist) {
+        throw new Error(`${playlistCheck.platform} playlists/albums are not supported. Please use a link to a single item.`);
+      }
 
-      const response = await fetch(`/api/fetch-info?url=${encodeURIComponent(debouncedUrl)}`);
+      const response = await fetch(`/api/fetch-info?url=${encodeURIComponent(trimmedUrl)}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to fetch video information.');
@@ -59,18 +67,29 @@ export default function DownloadInterface() {
       }
       return data;
     },
-    enabled: false, // We will trigger it manually or via debouncedUrl change
+    enabled: false,
     retry: false,
   });
   
-  // Effect for auto-fetching when debounced URL changes
+  // Auto-fetch when debounced URL changes
   useEffect(() => {
-    if (isValidUrl(debouncedUrl)) {
+    const trimmedUrl = debouncedUrl.trim();
+    if (trimmedUrl && isValidUrl(trimmedUrl) && !isPlaylistOrAlbum(trimmedUrl).isPlaylist) {
       refetch();
-    } else {
-      setVideoInfo(null); // Clear old info if URL is cleared or invalid
+    } else if (!trimmedUrl) {
+      setVideoInfo(null);
     }
   }, [debouncedUrl, refetch]);
+
+  // Auto-select MP3 for Spotify
+  useEffect(() => {
+    if (videoInfo?.platform === 'spotify') {
+      const hasMp3 = videoInfo.formats.some(f => f.format === 'mp3');
+      if (hasMp3) {
+        setFormat('mp3');
+      }
+    }
+  }, [videoInfo]);
 
   useEffect(() => {
     if (isError && error) {
@@ -80,12 +99,48 @@ export default function DownloadInterface() {
 
   const handleUrlChange = (value: string) => {
     setUrl(value);
+    const playlistCheck = isPlaylistOrAlbum(value.trim());
+    if (playlistCheck.isPlaylist) {
+      toast({
+        title: "Unsupported URL Type",
+        description: `${playlistCheck.platform} playlists/albums are not supported yet. Please provide a link to a single video or track.`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleFetchClick = () => {
+    const trimmedUrl = url.trim();
+    const playlistCheck = isPlaylistOrAlbum(trimmedUrl);
+    if (playlistCheck.isPlaylist) {
+       toast({
+        title: "Unsupported URL Type",
+        description: `${playlistCheck.platform} playlists/albums are not supported yet. Please provide a link to a single video or track.`,
+        variant: "destructive"
+      });
+      setVideoInfo(null);
+      return;
+    }
+
+    if (isValidUrl(trimmedUrl)) {
+      refetch();
+    } else {
+      toast({ title: "Invalid URL", description: "Please enter a valid media URL.", variant: "destructive" });
+      setVideoInfo(null);
+    }
+  };
+
+  const handleClearClick = () => {
+    setUrl('');
+    setVideoInfo(null);
+    toast({ title: "Input Cleared", description: "URL and video information cleared.", variant: "default" });
   };
 
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      handleUrlChange(text);
+      handleUrlChange(text.trim());
+      toast({ title: "Pasted", description: "URL pasted from clipboard.", variant: "default" });
     } catch (err) {
       console.error('Failed to read clipboard contents: ', err);
       toast({ title: "Paste Failed", description: "Could not read from clipboard.", variant: "destructive" });
@@ -99,20 +154,20 @@ export default function DownloadInterface() {
     toast({ title: "Preparing Download", description: "Your download will begin shortly..." });
 
     const params = new URLSearchParams({
-        url: debouncedUrl,
+        url: url.trim(),
         format: format,
         quality: format === 'mp4' ? resolution : bitrate,
         title: videoInfo.title
     });
     
-    // This will trigger the browser's download manager
     window.location.href = `/api/download?${params.toString()}`;
 
-    // Reset the state immediately, as the browser handles the download from here.
-    setIsPreparing(false);
-    setUrl('');
-    setVideoInfo(null);
-  }, [videoInfo, debouncedUrl, format, resolution, bitrate, toast]);
+    setTimeout(() => {
+        setIsPreparing(false);
+        setUrl('');
+        setVideoInfo(null);
+    }, 1000); // Small delay to allow download to initiate
+  }, [videoInfo, url, format, resolution, bitrate, toast]);
   
   const handleDownloadClick = () => {
     const qualityValue = parseInt(resolution.replace('p', ''));
@@ -155,6 +210,10 @@ export default function DownloadInterface() {
                 disabled={isPreparing}
               />
               <Button onClick={handlePaste} variant="outline" className="w-full sm:w-auto" disabled={isPreparing}>Paste</Button>
+              <Button onClick={handleFetchClick} className="w-full sm:w-auto" disabled={isFetching || isPreparing}>
+                {isFetching ? 'Fetching...' : 'Fetch'}
+              </Button>
+              <Button onClick={handleClearClick} variant="ghost" className="w-full sm:w-auto" disabled={isPreparing}>Clear</Button>
             </div>
 
             {isFetching && (
@@ -167,7 +226,13 @@ export default function DownloadInterface() {
             {videoInfo && !isFetching && (
               <div className="space-y-4 animate-in fade-in-50">
                 <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 p-4 border rounded-md">
-                  <img src={videoInfo.thumbnail} alt={videoInfo.title} className="w-48 h-auto object-cover rounded-md" />
+                  {videoInfo.thumbnail ? (
+                    <img src={videoInfo.thumbnail} alt={videoInfo.title} className="w-48 h-auto object-cover rounded-md" />
+                  ) : (
+                    <div className="w-48 h-28 bg-muted flex items-center justify-center rounded-md text-muted-foreground">
+                      No Thumbnail
+                    </div>
+                  )}
                   <div className="space-y-1 text-center sm:text-left">
                     <h3 className="font-semibold">{videoInfo.title}</h3>
                     <p className="text-sm text-muted-foreground">Platform: {videoInfo.platform}</p>

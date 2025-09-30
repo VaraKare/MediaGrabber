@@ -4,9 +4,10 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import { type InsertDownload as InsertDownloadType } from "@shared/schema";
 import { z } from "zod";
-import { getVideoInfo, getDirectDownloadUrl } from "./downloader"; // UPDATED IMPORT
-import { getUrlPlatform } from "@shared/url-validator";
+import { getVideoInfo, getDirectDownloadUrl } from "./downloader";
+import { getUrlPlatform, isPlaylistOrAlbum } from "@shared/url-validator";
 import youtubeDl from 'youtube-dl-exec';
+import { log } from "./utils";
 
 // Initialize Stripe
 let stripe: Stripe | null = null;
@@ -16,8 +17,6 @@ if (process.env.STRIPE_SECRET_KEY) {
 
 // --- Mock Donor Count ---
 let donorCount = 10; // Starting mock donor count
-
-const log = (message: string) => console.log(`[SERVER] ${new Date().toLocaleTimeString()} - ${message}`);
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
@@ -30,7 +29,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getCurrentCharityStats();
       res.json({ totalDonations: stats?.totalRaised || 0, donorCount });
     } catch (error) {
-      console.error("Error fetching donations:", error);
+      log(`Error fetching donations: ${(error as Error).message}`, 'API');
       res.status(500).json({ error: "Failed to fetch donations" });
     }
   });
@@ -59,52 +58,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getCurrentCharityStats();
       res.json(stats);
     } catch (error) {
-      console.error("Error fetching charity stats:", error);
+      log(`Error fetching charity stats: ${(error as Error).message}`, 'API');
       res.status(500).json({ error: "Failed to fetch charity stats" });
     }
   });
 
   app.get("/api/fetch-info", async (req, res) => {
-    try {
-      const url = z.string().url().parse(req.query.url);
-      // We pass undefined for requestedFormat/Quality as this is the info endpoint
-      const videoInfo = await getVideoInfo(url); 
+    const url = z.string().url().safeParse(req.query.url);
 
-      if (!videoInfo || !videoInfo.thumbnail) {
-          return res.status(404).json({ error: "Could not retrieve video information." });
-      }
-      
-      // --- SERVER-SIDE THUMBNAIL FETCH AND BASE64 CONVERSION ---
-      // This solves the CORS/CORP issue with Instagram/Facebook thumbnails.
-      let thumbnailData = videoInfo.thumbnail;
-      if (thumbnailData && !thumbnailData.startsWith('data:')) { // Only fetch if not already base64
-        try {
-          const imageResponse = await fetch(videoInfo.thumbnail);
-          if (imageResponse.ok) {
-            const buffer = await imageResponse.arrayBuffer();
-            const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-            thumbnailData = `data:${contentType};base64,${Buffer.from(buffer).toString('base64')}`;
-            log("Successfully converted thumbnail to Base64.");
-          }
-        } catch (thumbError) {
-          console.error("Failed to fetch and convert thumbnail, falling back to URL:", thumbError);
-          thumbnailData = videoInfo.thumbnail; // Fallback to original URL
+    if (!url.success) {
+      return res.status(400).json({ error: "Invalid URL provided." });
+    }
+
+    log(`Received /api/fetch-info request for URL: ${url.data}`, 'FetchInfo');
+
+    try {
+        // --- Playlist & Album Download Check ---
+        const playlistCheck = isPlaylistOrAlbum(url.data);
+        if (playlistCheck.isPlaylist) {
+            const message = `${playlistCheck.platform} playlist/album downloads are not supported yet. Please use a link to a single item.`;
+            log(`Playlist/Album detected for ${playlistCheck.platform}. Rejecting request.`, 'FetchInfo');
+            return res.status(400).json({ error: message });
         }
-      }
+
+        const videoInfo = await getVideoInfo(url.data); 
+
+        if (!videoInfo || !videoInfo.thumbnail) {
+            return res.status(404).json({ error: "Could not retrieve video information." });
+        }
       
-      res.json({
-        ...videoInfo,
-        thumbnail: thumbnailData, // Send the Base64 string or the original URL
-      });
+        let thumbnailData = videoInfo.thumbnail;
+        if (thumbnailData && !thumbnailData.startsWith('data:')) {
+            try {
+                const imageResponse = await fetch(videoInfo.thumbnail);
+                if (imageResponse.ok) {
+                    const buffer = await imageResponse.arrayBuffer();
+                    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+                    thumbnailData = `data:${contentType};base64,${Buffer.from(buffer).toString('base64')}`;
+                    log("Successfully converted thumbnail to Base64.", 'FetchInfo');
+                }
+            } catch (thumbError) {
+                log(`Failed to fetch and convert thumbnail, falling back to URL: ${(thumbError as Error).message}`, 'FetchInfo');
+            }
+        }
+      
+        log(`Successfully returned video info for ${url.data}.`, 'FetchInfo');
+        res.json({
+            ...videoInfo,
+            thumbnail: thumbnailData,
+        });
 
     } catch (error) {
-      console.error("Error in /api/fetch-info:", error);
-      res.status(400).json({ error: (error as Error).message || "Invalid URL or failed to fetch video information." });
+        log(`Error in /api/fetch-info for URL: ${url.data}. Error: ${(error as Error).message}`, 'FetchInfo', error);
+        res.status(400).json({ error: (error as Error).message || "Invalid URL or failed to fetch video information." });
     }
   });
 
   app.get("/api/download", async (req, res) => {
-    log('Download stream request received.');
+    log('Download stream request received.', 'Download');
     
     try {
       const { url, format, quality, title } = z.object({
@@ -113,23 +124,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quality: z.string(),
         title: z.string(),
       }).parse(req.query);
-      log(`Request validated: url=${url}, format=${format}, quality=${quality}`);
+      log(`Request validated: url=${url}, format=${format}, quality=${quality}`, 'Download');
   
       const platform = getUrlPlatform(url);
       const safeTitle = (title || 'download').replace(/[^a-z0-9-_.]/gi, '_');
       const finalFilename = `${safeTitle}.${format}`;
       
-      // Attempt to get a direct download URL from RapidAPI
       const directDownloadUrl = await getDirectDownloadUrl(url, platform, format, quality);
 
       if (directDownloadUrl) {
-          log(`Redirecting to direct download URL: ${directDownloadUrl}`);
+          log(`Redirecting to direct download URL: ${directDownloadUrl}`, 'Download');
           res.redirect(directDownloadUrl);
           return;
       }
 
-      // If no direct URL from API or API failed, fallback to yt-dlp for streaming
-      log("No direct download URL from API or API failed. Falling back to yt-dlp for streaming.");
+      log("No direct download URL from API or API failed. Falling back to yt-dlp for streaming.", 'Download');
       
       res.setHeader('Content-Disposition', `attachment; filename="${finalFilename}"`);
       res.setHeader('Content-Type', format === 'mp4' ? 'video/mp4' : 'audio/mpeg');
@@ -138,15 +147,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (format === 'mp4') {
         const requestedHeight = parseInt(quality);
-        log(`MP4 stream requested for height <= ${requestedHeight}p`);
+        log(`MP4 stream requested for height <= ${requestedHeight}p`, 'Download');
         options.format = `bestvideo[height<=${requestedHeight}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${requestedHeight}][ext=mp4]/best`;
       } else { // mp3
-        log(`MP3 stream requested.`);
+        log(`MP3 stream requested.`, 'Download');
         options.extractAudio = true;
         options.audioFormat = 'mp3';
       }
 
-      log(`Spawning yt-dlp with options: ${JSON.stringify(options)}`);
+      log(`Spawning yt-dlp with options: ${JSON.stringify(options)}`, 'Download');
       const downloadProcess = youtubeDl.exec(url, options);
 
       if (downloadProcess.stdout) {
@@ -157,17 +166,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (downloadProcess.stderr) {
         downloadProcess.stderr.on('data', (data: Buffer) => {
-          log(`[yt-dlp stderr]: ${data.toString()}`);
+          log(`[yt-dlp stderr]: ${data.toString()}`, 'Download');
         });
       }
 
       req.on('close', () => {
-        log('Client aborted the download. Killing yt-dlp process.');
+        log('Client aborted the download. Killing yt-dlp process.', 'Download');
         downloadProcess.kill();
       });
   
     } catch (error) {
-      log(`ERROR in /api/download: ${error}`);
+      log(`ERROR in /api/download: ${error}`, 'Download');
       if (!res.headersSent) {
           res.status(500).json({ error: (error as Error).message || "An error occurred while preparing your download." });
       }
@@ -179,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.incrementPremiumDownloads();
         res.status(200).json({ success: true });
     } catch (error) {
-        console.error("Error recording ad view:", error);
+        log(`Error recording ad view: ${(error as Error).message}`, 'API');
         res.status(500).json({ error: "Failed to record ad view" });
     }
   });

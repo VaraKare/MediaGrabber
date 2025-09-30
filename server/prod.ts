@@ -2,44 +2,43 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { serveStatic, log } from "./utils";
-import { API_CONFIG } from "./downloader"; // Import the config to check env vars
+import { serveStatic, log } from "./utils"; // Import log from utils
 
 const app = express();
 
 // --- CRITICAL: Environment Variable Check ---
 // This will run when the server starts and log the status of all required keys.
 // Check your Render logs for this output!
-console.log("--- Checking Environment Variables ---");
+log("--- Checking Environment Variables ---", "EnvCheck");
 const requiredVars = [
-    'RAPIDAPI_KEY',
-    'YOUTUBE_API_HOST',
+    'RAPIDAPI_KEY', // Your single key for all RapidAPI services
     'TIKTOK_API_HOST',
     'PINTEREST_API_HOST',
     'SPOTIFY_API_HOST',
     'TERABOX_API_HOST',
-    'GENERAL_API_HOST'
+    'GENERAL_API_HOST' // For the "all-video-downloader1"
 ];
 let allKeysFound = true;
 requiredVars.forEach(key => {
     if (process.env[key]) {
-        console.log(`✅ ${key} is configured.`);
+        log(`✅ ${key} is configured.`, "EnvCheck");
     } else {
-        console.error(`❌ ${key} is MISSING.`);
+        log(`❌ ${key} is MISSING.`, "EnvCheck", "ERROR"); // Log missing keys as errors
         allKeysFound = false;
     }
 });
 if (!allKeysFound) {
-    console.error("🚨 FATAL: One or more required environment variables are missing. Server will likely fail.");
+    log("🚨 FATAL: One or more required environment variables are missing. The server will not work correctly.", "EnvCheck", "ERROR");
 } else {
-    console.log("👍 All required API environment variables are present.");
+    log("👍 All required API environment variables are present.", "EnvCheck");
 }
-console.log("------------------------------------");
+log("------------------------------------", "EnvCheck");
 
 
 // A specific list of allowed origins for production
 const allowedOrigins = [
     'https://downloadmedia-umber.vercel.app',
+    // Add other production origins if necessary
 ];
 
 app.use(cors({ 
@@ -49,17 +48,30 @@ app.use(cors({
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            log(`CORS: Disallowed origin in production: ${origin}`);
+            log(`CORS: Disallowed origin in production: ${origin}`, "CORS");
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true
 }));
-log(`CORS enabled for: ${allowedOrigins.join(", ")}`);
+log(`CORS enabled for: ${allowedOrigins.join(", ")}`, "CORS");
 
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on("finish", () => {
+    const duration = Number(process.hrtime.bigint() - start) / 1_000_000; // Convert to milliseconds
+    if (req.path.startsWith("/api")) {
+      log(`${req.method} ${req.path} ${res.statusCode} in ${duration.toFixed(2)}ms`, "Request");
+    }
+  });
+  next();
+});
+
 
 (async () => {
   const server = await registerRoutes(app);
@@ -67,13 +79,14 @@ app.use(express.urlencoded({ extended: false }));
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    log(`ERROR: ${status} - ${message}`, "ErrorHandler", err); // Log full error object
     res.status(status).json({ message });
   });
 
   const isApiOnly = process.env.API_ONLY_MODE === 'true';
 
   if (isApiOnly) {
-      log("Running in API-only mode. Frontend will not be served.");
+      log("Running in API-only mode. Frontend will not be served.", "Server");
       app.get("/", (_req, res) => {
           res.json({ message: "MediaHub API is running" });
       });
@@ -86,7 +99,6 @@ app.use(express.urlencoded({ extended: false }));
     port,
     host: "0.0.0.0",
   }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on port ${port}`, "Server");
   });
 })();
-
